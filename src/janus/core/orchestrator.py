@@ -1,0 +1,201 @@
+"""PipelineOrchestrator — wires the tiers into one loop (DIP: interfaces
+injected, never constructed here).
+
+CODE_MODIFICATION pipeline:
+  S1 decide → prune AST slices → S2 generate → parse → apply →
+  write → verify → on failure: triage → ONE repair attempt →
+  on final failure: restore original files byte-for-byte (restore-parity).
+
+Escalation and non-modification intents return immediately without any
+generative inference.
+"""
+
+from enum import StrEnum
+from pathlib import Path
+
+from pydantic import BaseModel, Field
+
+from janus.context.ast_pruner import extract_symbol
+from janus.core.config import JanusSettings
+from janus.core.types import (
+    IntentType,
+    PatchBlock,
+    System1Decision,
+    VerificationResult,
+)
+from janus.patcher.engine import PatchApplicationError, apply_all
+from janus.patcher.parser import parse_patches
+from janus.system1.base import DecisionEngineProtocol
+from janus.system2.base import GenerativeEngineProtocol
+from janus.system2.prompt_templates import build_user_prompt
+from janus.verification.runner import VerificationRunner
+from janus.verification.triage import triage_failure
+
+
+class RunStatus(StrEnum):
+    PATCHED_VERIFIED = "patched_verified"
+    ESCALATE = "escalate"
+    READ_ONLY = "read_only"
+    DIRECT_ACTION = "direct_action"
+    FAILED_ROLLED_BACK = "failed_rolled_back"
+
+
+class RunReport(BaseModel):
+    status: RunStatus
+    decision: System1Decision
+    patches: list[PatchBlock] = Field(default_factory=list)
+    verification: VerificationResult | None = None
+    repair_note: str | None = None
+    message: str = ""
+
+
+class PipelineOrchestrator:
+    def __init__(
+        self,
+        s1: DecisionEngineProtocol,
+        s2: GenerativeEngineProtocol,
+        runner: VerificationRunner | None = None,
+        settings: JanusSettings | None = None,
+    ) -> None:
+        self._s1 = s1
+        self._s2 = s2
+        self._settings = settings or JanusSettings()
+        self._runner = runner or VerificationRunner(self._settings)
+
+    def run(self, user_prompt: str, repo_root: str, repo_summary: str) -> RunReport:
+        decision = self._s1.evaluate(user_prompt, repo_summary)
+
+        if decision.intent == IntentType.UNCLEAR_ESCALATE:
+            return RunReport(
+                status=RunStatus.ESCALATE,
+                decision=decision,
+                message=(
+                    f"confidence {decision.confidence:.2f} below threshold; "
+                    "clarify the request"
+                ),
+            )
+        if decision.intent == IntentType.EXPLANATION:
+            return RunReport(status=RunStatus.READ_ONLY, decision=decision)
+        if decision.intent == IntentType.DIRECT_ACTION:
+            return RunReport(status=RunStatus.DIRECT_ACTION, decision=decision)
+
+        return self._modify(decision, repo_root)
+
+    # ------------------------------------------------------------------
+
+    def _modify(self, decision: System1Decision, repo_root: str) -> RunReport:
+        slices = self._collect_slices(decision, repo_root)
+        if not slices:
+            return RunReport(
+                status=RunStatus.ESCALATE,
+                decision=decision,
+                message="no matching symbols/files could be sliced; clarify targets",
+            )
+
+        originals: dict[str, str] = {}
+        repair_note: str | None = None
+        last_error = ""
+
+        for _attempt in range(1 + self._settings.max_repair_attempts):
+            prompt = build_user_prompt(
+                decision.micro_instruction, slices, repair_note=repair_note
+            )
+            try:
+                raw = self._s2.generate_patch(prompt)
+                patches = parse_patches(raw)
+            except Exception as e:  # generation/parse failure is retry data
+                last_error = f"{type(e).__name__}: {e}"
+                repair_note = f"generation failed: {last_error}"
+                continue
+            if not patches:
+                last_error = "model output contained no patch blocks"
+                repair_note = (
+                    "your previous reply had no valid "
+                    "<<<<<<< SEARCH / ======= / >>>>>>> REPLACE blocks"
+                )
+                continue
+
+            try:
+                self._apply_and_write(patches, repo_root, originals)
+            except PatchApplicationError as e:
+                last_error = str(e)
+                repair_note = f"patch did not match the code: {e}"
+                continue
+
+            verification = self._runner.run(repo_root)
+            if verification.passed:
+                return RunReport(
+                    status=RunStatus.PATCHED_VERIFIED,
+                    decision=decision,
+                    patches=patches,
+                    verification=verification,
+                    repair_note=repair_note,
+                )
+
+            repair_note = triage_failure(verification, repo_root)
+            last_error = repair_note
+
+        self._restore(originals, repo_root)
+        return RunReport(
+            status=RunStatus.FAILED_ROLLED_BACK,
+            decision=decision,
+            repair_note=repair_note,
+            message=f"all attempts failed, files restored. Last error: {last_error}",
+        )
+
+    # ------------------------------------------------------------------
+
+    def _collect_slices(
+        self, decision: System1Decision, repo_root: str
+    ) -> dict[str, str]:
+        slices: dict[str, str] = {}
+        for rel in decision.target_files:
+            path = Path(repo_root) / rel
+            try:
+                source = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue
+            if decision.target_symbols:
+                for symbol in decision.target_symbols:
+                    slice_ = extract_symbol(source, symbol)
+                    if slice_ is not None:
+                        slices[rel] = slice_
+            else:
+                # No symbol named: whole-file slice only for small files;
+                # large files need S1 to name a symbol — escalate instead.
+                if len(source) < 4_000:
+                    slices[rel] = source
+        return slices
+
+    def _apply_and_write(
+        self,
+        patches: list[PatchBlock],
+        repo_root: str,
+        originals: dict[str, str],
+    ) -> None:
+        """Apply in memory per file; write only if every patch for that
+        file applies. Originals are captured before the first write."""
+        by_file: dict[str, list[PatchBlock]] = {}
+        known_files = {p.file_path for p in patches if p.file_path}
+        for patch in patches:
+            target = patch.file_path
+            if not target:
+                if len(known_files) == 1:
+                    target = next(iter(known_files))
+                else:
+                    raise PatchApplicationError(
+                        "patch has no file path and target is ambiguous"
+                    )
+            by_file.setdefault(target, []).append(patch)
+
+        for rel, file_patches in by_file.items():
+            path = Path(repo_root) / rel
+            if rel not in originals:
+                originals[rel] = path.read_text(encoding="utf-8")
+            new_content = apply_all(originals[rel], file_patches)
+            path.write_text(new_content, encoding="utf-8")
+
+    @staticmethod
+    def _restore(originals: dict[str, str], repo_root: str) -> None:
+        for rel, content in originals.items():
+            (Path(repo_root) / rel).write_text(content, encoding="utf-8")
