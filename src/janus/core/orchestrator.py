@@ -123,7 +123,7 @@ class PipelineOrchestrator:
                 continue
 
             try:
-                self._apply_and_write(patches, repo_root, originals)
+                self._apply_and_write(patches, repo_root, originals, set(slices))
             except PatchApplicationError as e:
                 last_error = str(e)
                 repair_note = f"patch did not match the code: {e}"
@@ -179,20 +179,26 @@ class PipelineOrchestrator:
         patches: list[PatchBlock],
         repo_root: str,
         originals: dict[str, str],
+        candidate_files: set[str] | None = None,
     ) -> None:
         """Apply in memory per file; write only if every patch for that
         file applies. Originals are captured before the first write."""
         by_file: dict[str, list[PatchBlock]] = {}
         known_files = {p.file_path for p in patches if p.file_path}
+        universe = known_files | (candidate_files or set())
         for patch in patches:
             target = patch.file_path
             if not target:
-                if len(known_files) == 1:
-                    target = next(iter(known_files))
-                else:
-                    raise PatchApplicationError(
-                        "patch has no file path and target is ambiguous"
-                    )
+                target = self._disambiguate_target(patch, universe, repo_root)
+                if target is None:
+                    if len(known_files) == 1:
+                        target = next(iter(known_files))
+                    elif len(universe) == 1:
+                        target = next(iter(universe))
+                    else:
+                        raise PatchApplicationError(
+                            "patch has no file path and target is ambiguous"
+                        )
             by_file.setdefault(target, []).append(patch)
 
         for rel, file_patches in by_file.items():
@@ -201,6 +207,24 @@ class PipelineOrchestrator:
                 originals[rel] = path.read_text(encoding="utf-8")
             new_content = apply_all(originals[rel], file_patches)
             path.write_text(new_content, encoding="utf-8")
+
+    @staticmethod
+    def _disambiguate_target(
+        patch: PatchBlock, candidates: set[str], repo_root: str
+    ) -> str | None:
+        """Attribute a path-less patch by matching its search block against
+        candidate file contents; exactly one match wins, else None."""
+        from janus.patcher.engine import apply_patch
+
+        matches = []
+        for rel in sorted(candidates):
+            try:
+                content = (Path(repo_root) / rel).read_text(encoding="utf-8")
+                apply_patch(content, patch)
+            except (PatchApplicationError, OSError, UnicodeDecodeError):
+                continue
+            matches.append(rel)
+        return matches[0] if len(matches) == 1 else None
 
     @staticmethod
     def _restore(originals: dict[str, str], repo_root: str) -> None:

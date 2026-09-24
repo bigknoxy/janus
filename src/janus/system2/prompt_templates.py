@@ -45,6 +45,7 @@ _SYSTEM = f"""You are a surgical code patcher. You output ONLY patch blocks.
 
 Format (one block per edit, no other text):
 
+file: <path of the file being edited, exactly as shown>
 {SEARCH_MARKER}
 <lines copied EXACTLY from the code shown>
 {DIVIDER_MARKER}
@@ -52,6 +53,7 @@ Format (one block per edit, no other text):
 {REPLACE_MARKER}
 
 Rules:
+- Every block MUST start with the `file:` line naming its target path.
 - The SEARCH section must match the shown code character-for-character,
   including indentation. Never invent context you were not shown.
 - Empty {DIVIDER_MARKER} → {REPLACE_MARKER} bodies delete the matched lines.
