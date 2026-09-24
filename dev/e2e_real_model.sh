@@ -24,7 +24,7 @@ run_fixture() {
   local before; before=$(cat "$dir/mod.py")
   (cd "$dir" && JANUS_VERIFY_COMMAND="$VPYTHON -m pytest -q test_mod.py" \
      JANUS_S2_LOG_RAW="$WORK/captures.jsonl" \
-     timeout 600 "$JANUS" run --yes --s1-backend laya "$prompt" --root "$dir" \
+     timeout 600 "$JANUS" run --yes --s1-backend "${JANUS_S1_BACKEND:-laya}" "$prompt" --root "$dir" \
      > "$WORK/$name.log" 2>&1)
   local code=$?
   local after; after=$(cat "$dir/mod.py")
