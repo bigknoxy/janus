@@ -27,6 +27,15 @@ if [ "$FREE_MB" -lt 400 ]; then
   exit 3
 fi
 
+# Memory pre-flight: llama servers hold ~9GiB of 14GiB; the eval loads a
+# Laya checkpoint per fixture (transient ~1.7GiB). Refuse to start under
+# 2.5GiB available rather than trigger an OOM storm at 03:17.
+AVAIL_MB=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo)
+if [ "$AVAIL_MB" -lt 2500 ]; then
+  echo "[mem-guard] ABORT: only ${AVAIL_MB}MB available (need 2500)" >&2
+  exit 4
+fi
+
 cd "$HERE"
 exec nice -n 19 .venv/bin/python dev/eval.py \
   --corpus eval_corpus --md "$LOGS/dogfood-$STAMP.md" --json "$LOGS/dogfood-$STAMP.json" "$@"
