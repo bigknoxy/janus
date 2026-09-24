@@ -32,6 +32,27 @@ from janus.verification.runner import VerificationRunner
 from janus.verification.triage import triage_failure
 
 
+def _whole_slice_fallback(raw: str, slices: dict[str, str]) -> list[PatchBlock]:
+    """A real qwen3-4b failure mode (harvested 2026-09-24): the model
+    replies `file: <path>` + the full corrected slice with no markers.
+    Deterministic rescue: if the text names exactly one sliced file, treat
+    everything after the header as the replacement for the whole slice.
+    Only whole-slice replacement — never a partial guess."""
+    named = [rel for rel in slices if f"file: {rel}" in raw]
+    if len(named) != 1:
+        return []
+    rel = named[0]
+    body = raw.split(f"file: {rel}", 1)[1].strip()
+    if body.startswith("```"):  # strip code fencing if present
+        body_lines = body.splitlines()
+        body = "\n".join(
+            body_lines[1:-1] if body_lines[-1].startswith("```") else body_lines[1:]
+        )
+    if not body:
+        return []
+    return [PatchBlock(file_path=rel, search_block=slices[rel], replace_block=body)]
+
+
 class RunStatus(StrEnum):
     PATCHED_VERIFIED = "patched_verified"
     ESCALATE = "escalate"
@@ -114,6 +135,8 @@ class PipelineOrchestrator:
                 last_error = f"{type(e).__name__}: {e}"
                 repair_note = f"generation failed: {last_error}"
                 continue
+            if not patches:
+                patches = _whole_slice_fallback(raw, slices)
             if not patches:
                 last_error = "model output contained no patch blocks"
                 repair_note = (

@@ -38,6 +38,10 @@ def build_user_prompt(
         parts.append(f"file: {path}")
         parts.append(code)
         parts.append("")
+    parts.append(
+        "Reply with ONLY patch blocks (file: line, then "
+        "<<<<<<< SEARCH / ======= / >>>>>>> REPLACE). No prose. No full file."
+    )
     return "\n".join(parts)
 
 
@@ -54,6 +58,19 @@ file: <path of the file being edited, exactly as shown>
 
 Rules:
 - Every block MUST start with the `file:` line naming its target path.
+
+Example — to change `return price - pct` inside mod.py you output:
+
+file: mod.py
+{SEARCH_MARKER}
+def discount(price, pct):
+    return price - pct
+{DIVIDER_MARKER}
+def discount(price, pct):
+    return price - (price * pct / 100)
+{REPLACE_MARKER}
+
+NEVER reply with the full corrected file. NEVER omit the three markers.
 - The SEARCH section must match the shown code character-for-character,
   including indentation. Never invent context you were not shown.
 - Empty {DIVIDER_MARKER} → {REPLACE_MARKER} bodies delete the matched lines.
