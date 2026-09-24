@@ -11,6 +11,8 @@ from janus.core.types import VerificationResult
 
 _PY_LOC = re.compile(r'File "([^"]+)", line (\d+)')
 _ERROR_LINE = re.compile(r"^([A-Za-z_][\w.]*(?:Error|Exception)|AssertionError)\b.*")
+_PYTEST_FAIL = re.compile(r"^(FAILED|ERROR)\s+\S+::\S+")
+_ASSERT_DETAIL = re.compile(r"^E\s+")
 
 
 def triage_failure(result: VerificationResult, project_root: str | None = None) -> str:
@@ -35,9 +37,22 @@ def triage_failure(result: VerificationResult, project_root: str | None = None) 
             error_line = ln.strip()
             break
 
+    # Pytest short-summary + assertion detail carry the actual signal;
+    # '1 failed in 0.11s' is decorative (harvested 2026-09-24: a repair loop
+    # starved on exactly that line).
+    details = [
+        ln.strip()
+        for ln in lines
+        if _PYTEST_FAIL.match(ln.strip()) or _ASSERT_DETAIL.match(ln.strip())
+    ][-4:]
+    if details:
+        error_line = (error_line + "; " if error_line else "") + " | ".join(
+            dict.fromkeys(details)
+        )
+
     if not error_line and lines:
         error_line = lines[-1].strip()
     if not error_line:
         error_line = f"exit code {result.exit_code} with no output"
 
-    return f"Fix: {error_line}{file_at_line}"[:500]
+    return f"Fix: {error_line}{file_at_line}"[:700]
