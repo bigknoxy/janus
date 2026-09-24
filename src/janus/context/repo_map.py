@@ -17,7 +17,7 @@ _DEFAULT_IGNORES = {
 _SOURCE_EXTS = {".py"}
 
 
-def repo_map(root: str, max_chars: int = 3_000, exts: set[str] | None = None) -> str:
+def repo_map(root: str, max_chars: int = 6_000, exts: set[str] | None = None) -> str:
     """Walk `root` and render a compact map. Exts defaults to {.py}."""
     exts = exts or _SOURCE_EXTS
     base = Path(root)
@@ -32,8 +32,18 @@ def repo_map(root: str, max_chars: int = 3_000, exts: set[str] | None = None) ->
             if p.suffix in exts:
                 candidates.append(p)
 
-    # Shallow paths first — top-level modules carry the intent signal.
-    candidates.sort(key=lambda p: (len(p.relative_to(base).parts), p.name))
+    # Source before tests, shallow first — modules carry the intent
+    # signal; test files are noise for targeting (live probe 2026-09-24:
+    # test-file fragments exhausted the budget before source appeared).
+    def _rank(p: Path) -> tuple[int, int, str]:
+        rel = p.relative_to(base)
+        is_test = any(
+            part.startswith(("test", "tests")) or part.startswith("test_")
+            for part in rel.parts
+        ) or p.name.startswith("test_")
+        return (int(is_test), len(rel.parts), p.name)
+
+    candidates.sort(key=_rank)
 
     for path in candidates:
         rel = str(path.relative_to(base))
@@ -51,12 +61,11 @@ def repo_map(root: str, max_chars: int = 3_000, exts: set[str] | None = None) ->
 
 
 def _flatten(skel: str) -> str:
-    """Collapse a skeleton to signature-ish one-liner fragments."""
-    frags = [
-        ln.strip()
-        for ln in skel.splitlines()
-        if ln.strip()
-        and not ln.strip().startswith(("#", "...", '"""', "'''"))
-        and (ln.strip().startswith(("def ", "class ", "async def ")) or "=" in ln)
-    ]
-    return " | ".join(frags)[:200]
+    """Collapse a skeleton to structural one-liners: defs, classes, imports
+    only. Anything else is noise for the S1 head budget."""
+    frags = []
+    for ln in skel.splitlines():
+        s = ln.strip()
+        if s.startswith(("def ", "class ", "async def ", "import ", "from ")):
+            frags.append(s[:80])
+    return " | ".join(frags)[:240]
