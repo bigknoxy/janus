@@ -15,6 +15,14 @@ class JanusSettings(BaseSettings):
         default="laya", description="Decision engine backend: 'laya' | 'mock'"
     )
     s1_checkpoint: str = "convaiinnovations/laya"
+    s1_subfolder: str = Field(
+        default="typed-decisions",
+        description="Laya checkpoint subfolder ('' = English root)",
+    )
+    s1_serve_url: str = Field(
+        default="",
+        description="If set, use a laya-serve HTTP backend instead of in-process",
+    )
     s1_device: str = Field(default="cpu", description="cpu | cuda")
     s1_preload: bool = True
     confidence_threshold: float = Field(

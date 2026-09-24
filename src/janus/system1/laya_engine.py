@@ -13,7 +13,6 @@ from janus.core.types import IntentType, System1Decision
 from janus.system1.base import enforce_confidence_gate
 from janus.system1.schemas import (
     DEFAULT_MARGIN_FLOOR,
-    LAYA_MODEL,
     file_relevance_question,
     intent_questions,
 )
@@ -24,17 +23,37 @@ class LayaDecisionEngine:
 
     def __init__(self, settings: JanusSettings | None = None) -> None:
         self._settings = settings or JanusSettings()
+        # In-process mode: single checkpoint direct-load, NOT
+        # Router(preload=True) — preload keeps 2 checkpoints resident
+        # (~1.5GB) and OOMs the 14GiB laptop alongside the llama servers.
+        self._agent: Any | None = None
+        if not self._settings.s1_serve_url:
+            try:
+                import laya
+            except ImportError as e:  # surfaced at construction, not mid-run
+                raise RuntimeError(
+                    "laya is not installed; run `pip install janus-code[laya]`"
+                ) from e
+            self._agent = laya.load(
+                self._settings.s1_checkpoint,
+                subfolder=(self._settings.s1_subfolder or None),
+            )
+
+    def _predict_http(self, state: dict, questions: dict) -> dict[str, Any]:
+        """laya-serve backend (Jev-compatible /v1/systemone). Same schema,
+        same decision assembler — the protocol seam is real."""
+        import httpx
+
+        url = f"{self._settings.s1_serve_url.rstrip('/')}/v1/systemone"
+        body: dict[str, Any] = {"state": state, "questions": questions}
+        if self._settings.s1_subfolder:
+            body["model"] = self._settings.s1_subfolder
         try:
-            import laya
-        except ImportError as e:  # surfaced at construction, not mid-run
-            raise RuntimeError(
-                "laya is not installed; run `pip install janus-code[laya]`"
-            ) from e
-        # Single checkpoint direct-load, NOT Router(preload=True): preload
-        # keeps 2 checkpoints resident (~1.5GB) and OOMs the 14GiB laptop
-        # alongside the llama servers. typed-decisions is English-only and
-        # smallest-footprint path to the decision head.
-        self._agent = laya.load(self._settings.s1_checkpoint, subfolder=LAYA_MODEL)
+            resp = httpx.post(url, json=body, timeout=120.0)
+            resp.raise_for_status()
+            return resp.json()  # type: ignore[no-any-return]
+        except (httpx.HTTPError, ValueError) as e:
+            raise RuntimeError(f"laya-serve backend error: {e}") from e
 
     def evaluate(self, user_prompt: str, repo_summary: str) -> System1Decision:
         state = {"request": user_prompt, "repository": repo_summary}
@@ -56,7 +75,10 @@ class LayaDecisionEngine:
                     path, candidates[path]
                 )
 
-        result: dict[str, Any] = self._agent.predict(state, questions)
+        if self._agent is not None:
+            result: dict[str, Any] = self._agent.predict(state, questions)
+        else:
+            result = self._predict_http(state, questions)
         answers = result.get("answers", {})
 
         scores = {
