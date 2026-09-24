@@ -15,4 +15,4 @@ export JANUS_S1_BACKEND="${JANUS_S1_BACKEND:-laya}"
 
 cd "$HERE"
 exec nice -n 19 .venv/bin/python dev/eval.py \
-  --corpus eval_corpus --md "$LOGS/dogfood-$STAMP.md" --json "$LOGS/dogfood-$STAMP.json"
+  --corpus eval_corpus --md "$LOGS/dogfood-$STAMP.md" --json "$LOGS/dogfood-$STAMP.json" "$@"
