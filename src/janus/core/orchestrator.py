@@ -79,11 +79,18 @@ class PipelineOrchestrator:
         if decision.intent == IntentType.DIRECT_ACTION:
             return RunReport(status=RunStatus.DIRECT_ACTION, decision=decision)
 
-        return self._modify(decision, repo_root)
+        return self.run_modify(decision, repo_root)
+
+    def run_forced(self, decision: System1Decision, repo_root: str) -> RunReport:
+        """Public API for executing a modification pipeline against a
+        caller-supplied decision (e.g. after the human overrides an
+        escalation). The decision is treated as authoritative — the gate
+        has already had its say."""
+        return self.run_modify(decision, repo_root)
 
     # ------------------------------------------------------------------
 
-    def _modify(self, decision: System1Decision, repo_root: str) -> RunReport:
+    def run_modify(self, decision: System1Decision, repo_root: str) -> RunReport:
         slices = self._collect_slices(decision, repo_root)
         if not slices:
             return RunReport(

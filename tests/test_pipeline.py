@@ -129,6 +129,23 @@ class TestE2EFixture:
         second_user = calls[1]["messages"][1]["content"]
         assert "PREVIOUS ATTEMPT FAILED" in second_user
 
+    def test_run_forced_matches_old_private_path(self, project: Path):
+        """ISC-6: the public escalation-override API executes the same
+        modification pipeline as the internal path."""
+        from janus.core.types import IntentType, System1Decision
+
+        orch = make_orchestrator(s2_transport_returning(GOOD_PATCH))
+        forced = System1Decision(
+            intent=IntentType.CODE_MODIFICATION,
+            confidence=1.0,
+            target_files=["calc.py"],
+            micro_instruction="fix calculate_tax",
+            requires_s2=True,
+        )
+        report = orch.run_forced(forced, str(project))
+        assert report.status == RunStatus.PATCHED_VERIFIED
+        assert (project / "calc.py").read_text() == FIXED
+
     def test_run_report_is_json_serializable(self, project: Path):
         report = make_orchestrator(s2_transport_returning(GOOD_PATCH)).run(
             "fix calculate_tax in calc.py", str(project), REPO_SUMMARY

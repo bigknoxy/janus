@@ -108,7 +108,7 @@ def run(
         forced = report.decision.model_copy(
             update={"intent": IntentType.CODE_MODIFICATION, "requires_s2": True}
         )
-        report = orchestrator._modify(forced, root_path)  # noqa: SLF001
+        report = orchestrator.run_forced(forced, root_path)
 
     raise typer.Exit(code=_render_report(report))
 
