@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Janus — the two-faced coding engine</title>
+<meta name="description" content="System 1 decides. System 2 generates. A local-only coding CLI where a calibrated decision model guards the gate and a small LLM holds the pen.">
+<style>
+  :root {
+    --obsidian: #0d0b09;
+    --marble: #efe6d5;
+    --bronze: #c9962e;
+    --bronze-hi: #f0c15a;
+    --ember: #b4552a;
+    --smoke: #8a8071;
+    --sans: "Iowan Old Style", "Palatino", "Palatino Linotype", Georgia, serif;
+    --mono: "SF Mono", "Cascadia Code", Menlo, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--obsidian);
+    color: var(--marble);
+    font-family: var(--sans);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* ── hero ─────────────────────────────────────────── */
+  .hero {
+    min-height: 92vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; position: relative;
+    background:
+      radial-gradient(ellipse 60% 40% at 50% 30%, rgba(201,150,46,.14), transparent 70%),
+      var(--obsidian);
+  }
+  .hero h1 {
+    font-size: clamp(3.5rem, 12vw, 8.5rem);
+    font-weight: 400;
+    letter-spacing: .35em;
+    margin: .2em 0 0 0;
+    text-transform: uppercase;
+    background: linear-gradient(180deg, var(--bronze-hi), var(--bronze) 60%, #7a5a1c);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero .epithet {
+    color: var(--smoke); font-style: italic;
+    font-size: clamp(1rem, 2.4vw, 1.35rem);
+    letter-spacing: .12em;
+    margin-top: .4em;
+  }
+  .hero .latin {
+    color: var(--bronze); font-size: .95rem; letter-spacing: .3em;
+    text-transform: uppercase; margin-top: 1.6em;
+  }
+  .gate-svg { width: clamp(280px, 42vw, 460px); height: auto; }
+  .scroll-hint {
+    position: absolute; bottom: 28px; color: var(--smoke);
+    font-size: .8rem; letter-spacing: .25em; text-transform: uppercase;
+    animation: breathe 3s ease-in-out infinite;
+  }
+  @keyframes breathe { 50% { opacity: .4; } }
+
+  /* ── sections ─────────────────────────────────────── */
+  section { padding: 96px 0; }
+  .alt { background: linear-gradient(180deg, transparent, rgba(201,150,46,.05), transparent); }
+  h2 {
+    font-size: clamp(1.8rem, 4.5vw, 2.6rem); font-weight: 400;
+    letter-spacing: .12em; text-transform: uppercase;
+    color: var(--bronze-hi); margin-bottom: .6em; text-align: center;
+  }
+  h2 span { color: var(--smoke); display: block; font-size: .5em; letter-spacing: .3em; margin-top: .5em; }
+  p.lead { text-align: center; max-width: 720px; margin: 0 auto 48px; color: var(--marble); opacity: .9; }
+
+  /* two faces diagram */
+  .faces { display: grid; grid-template-columns: 1fr auto 1fr; gap: 24px; align-items: center; max-width: 940px; margin: 0 auto; }
+  .face {
+    border: 1px solid rgba(201,150,46,.35);
+    border-radius: 12px; padding: 28px 24px;
+    background: rgba(255,255,255,.02);
+  }
+  .face h3 { color: var(--bronze); font-weight: 400; letter-spacing: .15em; text-transform: uppercase; font-size: 1.05rem; margin-bottom: .5em; }
+  .face ul { list-style: none; }
+  .face li { padding: 6px 0; border-bottom: 1px dashed rgba(201,150,46,.18); font-size: .95rem; }
+  .face li:last-child { border: none; }
+  .face li b { color: var(--bronze-hi); font-weight: 600; }
+  .gate-post { color: var(--bronze); text-align: center; font-size: 2.2rem; user-select: none; }
+  @media (max-width: 820px) { .faces { grid-template-columns: 1fr; } .gate-post { transform: rotate(90deg); } }
+
+  /* install block */
+  .term {
+    max-width: 720px; margin: 0 auto; border-radius: 10px; overflow: hidden;
+    border: 1px solid rgba(201,150,46,.4); box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  }
+  .term-bar { background: #1a1611; padding: 10px 16px; display: flex; gap: 8px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--bronze); opacity: .35; }
+  .term pre {
+    background: #12100c; color: var(--bronze-hi); padding: 22px 26px;
+    font-family: var(--mono); font-size: .92rem; overflow-x: auto;
+  }
+  .term .c { color: var(--smoke); }
+
+  /* metrics table */
+  table { border-collapse: collapse; margin: 0 auto; min-width: 540px; }
+  th, td { padding: 12px 26px; border-bottom: 1px solid rgba(201,150,46,.2); text-align: center; font-size: .95rem; }
+  th { color: var(--bronze); text-transform: uppercase; letter-spacing: .1em; font-weight: 600; font-size: .8rem; }
+  td.pass { color: #8fbf6a; }
+  td.fail { color: var(--ember); }
+
+  /* arch rule */
+  .arch { display: flex; justify-content: center; margin: 48px 0 0; opacity: .5; }
+
+  footer { border-top: 1px solid rgba(201,150,46,.25); padding: 40px 0 64px; text-align: center; color: var(--smoke); font-size: .85rem; }
+  footer a { color: var(--bronze); text-decoration: none; }
+  footer a:hover { color: var(--bronze-hi); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <!-- The two-faced gate -->
+  <svg class="gate-svg" viewBox="0 0 460 340" fill="none" role="img" aria-label="The gate of Janus: one arch, two faces">
+    <defs>
+      <linearGradient id="bronze" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f0c15a"/><stop offset="1" stop-color="#8a6a22"/>
+      </linearGradient>
+    </defs>
+    <!-- arch -->
+    <path d="M60 320 V170 A170 130 0 0 1 400 170 V320" stroke="url(#bronze)" stroke-width="4" fill="none"/>
+    <path d="M84 320 V176 A146 108 0 0 1 376 176 V320" stroke="#8a6a22" stroke-width="1.5" stroke-dasharray="3 6" fill="none"/>
+    <!-- pillars -->
+    <rect x="52" y="300" width="24" height="20" fill="url(#bronze)"/>
+    <rect x="384" y="300" width="24" height="20" fill="url(#bronze)"/>
+    <!-- left face (past: System 1, the decider) -->
+    <g stroke="url(#bronze)" stroke-width="3" fill="none">
+      <path d="M228 96 c-34 6 -52 30 -50 58 l-12 8 10 6 c-2 14 4 24 10 32 l-4 26 c20 10 44 6 58 -8 V96 Z" fill="#14100b"/>
+      <circle cx="198" cy="150" r="4.5" fill="#f0c15a" stroke="none"/>
+      <path d="M188 118 q14 -8 30 -2" stroke-width="2"/>
+    </g>
+    <!-- right face (future: System 2, the hand) -->
+    <g stroke="url(#bronze)" stroke-width="3" fill="none">
+      <path d="M232 96 c34 6 52 30 50 58 l12 8 -10 6 c2 14 -4 24 -10 32 l4 26 c-20 10 -44 6 -58 -8 V96 Z" fill="#14100b"/>
+      <circle cx="262" cy="150" r="4.5" fill="#b4552a" stroke="none"/>
+      <path d="M272 118 q-14 -8 -30 -2" stroke-width="2"/>
+    </g>
+    <!-- seam -->
+    <line x1="230" y1="96" x2="230" y2="218" stroke="#8a6a22" stroke-width="1" stroke-dasharray="2 4"/>
+    <!-- keystone -->
+    <rect x="222" y="62" width="16" height="22" fill="url(#bronze)"/>
+  </svg>
+
+  <h1>Janus</h1>
+  <p class="epithet">System&nbsp;1 decides. System&nbsp;2 generates. Neither betrays the other, and nothing crosses the gate unverified.</p>
+  <p class="latin">ianua · begins &amp; ends · Apache-2.0 · local-only</p>
+  <div class="scroll-hint">descend ↓</div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>The Two Faces<span>past guards the gate · future holds the pen</span></h2>
+    <p class="lead">Small models fail at coding not from lack of intelligence but from unconstrained freedom. Janus gives every cognitive act its proper vessel: a non-generative decision head for judgment, a compact LLM for synthesis, and deterministic code for everything in between.</p>
+
+    <div class="faces">
+      <div class="face">
+        <h3>🚪 The Gate · System 1</h3>
+        <ul>
+          <li><b>Laya</b> decision model — typed answers, one forward pass</li>
+          <li>Cannot emit prose → cannot hallucinate JSON</li>
+          <li>Margin-gated: ambiguity <b>escalates to you</b>, never guesses</li>
+          <li>~200 ms on a laptop CPU, 421M params</li>
+        </ul>
+      </div>
+      <div class="gate-post">⚡</div>
+      <div class="face">
+        <h3>✋ The Hand · System 2</h3>
+        <ul>
+          <li><b>qwen3-4b</b> (any OpenAI-compatible endpoint)</li>
+          <li>Sees only <b>Tree-sitter slices</b> — never whole files</li>
+          <li>Speaks one grammar: <b>SEARCH / REPLACE</b> blocks</li>
+          <li>Fails? Triage note feeds one-shot repair</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="arch">
+      <svg width="120" height="34" viewBox="0 0 120 34"><path d="M10 32 A50 30 0 0 1 110 32" stroke="#c9962e" stroke-width="2" fill="none"/></svg>
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <h2>Crossing the Threshold<span>curl → fixing real bugs, one paste</span></h2>
+    <div class="term">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+      <pre>curl -fsSL https://raw.githubusercontent.com/bigknoxy/janus/main/install.sh | sh
+
+<span class="c"># verify your rig</span>
+janus doctor
+
+<span class="c"># the gate opens</span>
+janus run "fix first_n in mod.py: it returns one item too few" --root .</pre>
+    </div>
+    <p class="lead" style="margin-top:40px">Leaves no trace behind:
+      <span style="font-family:var(--mono);font-size:.9em">curl -fsSL …/uninstall.sh | sh</span></p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>The Ledger<span>measured, not marketed — real qwen3-4b, 2026-09-24</span></h2>
+    <table>
+      <tr><th>fixture tier</th><th>full pipeline</th><th>gate removed</th><th>repair removed</th></tr>
+      <tr><td>easy (8 fixtures)</td><td class="pass">8/8</td><td class="pass">8/8</td><td class="pass">8/8</td></tr>
+      <tr><td>hard (7 fixtures)</td><td class="pass">7/7</td><td class="fail">5/7 — gate traps escape</td><td class="fail">6/7 — no recovery</td></tr>
+    </table>
+    <p class="lead" style="margin-top:36px">Corruption events: <b>zero</b>. Every failure rolls back byte-for-byte —
+    a file the failed run <em>created</em> is deleted; a file it edited is restored.
+    The whole matrix re-runs itself nightly on the authors' laptop.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p><a href="https://github.com/bigknoxy/janus">github.com/bigknoxy/janus</a> · Apache-2.0</p>
+    <p style="margin-top:8px; font-style:italic">Janus, god of gates — every ending verified, every beginning earned.</p>
+  </div>
+</footer>
+
+</body>
+</html>
