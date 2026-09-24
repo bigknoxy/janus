@@ -45,10 +45,16 @@ class LayaDecisionEngine:
         # The skeleton signature goes inside each question: path-only
         # relevance starved the noul head on generic names (probe 2026-09-24).
         candidates = _candidate_files(repo_summary)
-        for path in candidates:
-            questions[f"file:{path}"] = file_relevance_question(
-                path, candidates[path]
-            )
+        # Deterministic-first targeting: a path named verbatim in the
+        # prompt is the dominant signal and needs no model call. (Live
+        # probe 2026-09-24: relevance nouls saturate near 0.5 for all
+        # files — noise, not signal.)
+        pinned = [p for p in candidates if p in user_prompt]
+        if not pinned:
+            for path in candidates:
+                questions[f"file:{path}"] = file_relevance_question(
+                    path, candidates[path]
+                )
 
         result: dict[str, Any] = self._agent.predict(state, questions)
         answers = result.get("answers", {})
@@ -70,11 +76,14 @@ class LayaDecisionEngine:
             else 1.0
         )
 
-        target_files = [
-            key[len("file:"):]
-            for key, ans in answers.items()
-            if key.startswith("file:") and ans.get("noul", 0.0) >= 0.5
-        ]
+        if pinned:
+            target_files = pinned[:3]
+        else:
+            target_files = [
+                key[len("file:"):]
+                for key, ans in answers.items()
+                if key.startswith("file:") and ans.get("noul", 0.0) >= 0.6
+            ][:3]
 
         decision = System1Decision(
             intent=intent,
