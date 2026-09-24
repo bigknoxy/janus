@@ -1,0 +1,12 @@
+{
+  "name": "multifile_signature",
+  "bug_class": "multi-file",
+  "prompt": "fix the shipping estimate: checkout in shop.py calls line_total with the arguments swapped (weight and distance are transposed)",
+  "files": {
+    "calc.py": "def line_total(weight, distance):\n    return weight * 0.5 + distance * 0.1\n",
+    "shop.py": "from calc import line_total\n\ndef checkout(weight, distance):\n    return line_total(distance, weight)  # BUG: swapped\n"
+  },
+  "tests": {
+    "test_shop.py": "from shop import checkout\n\ndef test_checkout():\n    assert abs(checkout(2, 100) - 11.0) < 1e-9\n"
+  }
+}

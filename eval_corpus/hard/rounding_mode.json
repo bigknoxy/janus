@@ -1,0 +1,11 @@
+{
+  "name": "rounding_mode",
+  "bug_class": "subtle-semantics",
+  "prompt": "fix round_half_up in mod.py: values ending exactly in .5 must round away from zero, not to even",
+  "files": {
+    "mod.py": "def round_half_up(x):\n    return round(x)  # BUG: Python rounds to even\n"
+  },
+  "tests": {
+    "test_mod.py": "from mod import round_half_up\n\ndef test_rounding():\n    assert round_half_up(2.5) == 3\n    assert round_half_up(3.5) == 4\n    assert round_half_up(2.4) == 2\n    assert round_half_up(-2.5) == -3\n"
+  }
+}

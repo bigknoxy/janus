@@ -114,7 +114,7 @@ def run_fixture(fixture: dict, mode: str, settings: JanusSettings, python: str) 
         )
         t0 = time.time()
         try:
-            report = orch.run(fixture["prompt"], str(root), " ".join(fixture["files"]))
+            report = orch.run(fixture["prompt"], str(root), "\n".join(fixture["files"]))
         except Exception as e:  # noqa: BLE001 — internal bugs must be visible
             return {
                 "fixture": fixture["name"], "mode": mode,
@@ -126,7 +126,16 @@ def run_fixture(fixture: dict, mode: str, settings: JanusSettings, python: str) 
         changed = after != before
         green = _tests_green(root, python, verify or "")
 
-        if report.status == RunStatus.PATCHED_VERIFIED and green and changed:
+        expect = fixture.get("expect")
+        if expect == "ESCALATE_OR_READONLY":
+            # Gate fixture: success = no generation spend, no file change.
+            if report.status in (RunStatus.ESCALATE, RunStatus.READ_ONLY) and not changed:
+                outcome = "PASSED"
+            elif changed:
+                outcome = "WRONG-INTENT"  # gate failed to hold the line
+            else:
+                outcome = "WRONG-INTENT"
+        elif report.status == RunStatus.PATCHED_VERIFIED and green and changed:
             outcome = "PASSED"
         elif report.status == RunStatus.FAILED_ROLLED_BACK and not changed:
             outcome = "SAFE-FAIL"

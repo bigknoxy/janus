@@ -1,0 +1,11 @@
+{
+  "name": "nested_mutation",
+  "bug_class": "subtle-semantics",
+  "prompt": "fix update_grid in mod.py: callers pass a grid and it must not be mutated \u2014 the current version corrupts the caller's grid",
+  "files": {
+    "mod.py": "def update_grid(grid, x, y, v):\n    g = grid[:]  # BUG: shallow copy still aliases rows\n    g[y][x] = v\n    return g\n"
+  },
+  "tests": {
+    "test_mod.py": "from mod import update_grid\n\ndef test_no_alias():\n    orig = [[0, 0], [0, 0]]\n    out = update_grid(orig, 1, 1, 9)\n    assert orig == [[0, 0], [0, 0]]\n    assert out == [[0, 0], [0, 9]]\n"
+  }
+}

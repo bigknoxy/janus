@@ -1,0 +1,12 @@
+{
+  "name": "question_with_path",
+  "bug_class": "gate",
+  "prompt": "does the buggy calculate_tax in mod.py double-count the rate, or is the test wrong? explain",
+  "expect": "ESCALATE_OR_READONLY",
+  "files": {
+    "mod.py": "def calculate_tax(amount, rate):\n    return amount * rate * 2  # wrong\n"
+  },
+  "tests": {
+    "test_mod.py": "from mod import calculate_tax\n\ndef test_tax():\n    assert calculate_tax(100, 0.2) == 20\n"
+  }
+}
