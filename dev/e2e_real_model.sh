@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # ISC-3/ISC-4 harness: run janus against real qwen3-4b on seeded-bug fixtures.
-# Usage (on the laptop): bash dev/e2e_real_model.sh <workdir>
-# Prints PASS/FAIL per fixture and leaves raw S2 captures in $WORK/captures.jsonl
+# Usage: bash dev/e2e_real_model.sh <workdir>
+# Env: JANUS_BIN (default: janus on PATH), JANUS_PYTHON (default: python),
+# JANUS_S2_BASE_URL (point at any OpenAI-compatible endpoint).
+# Prints PASS/FAIL per fixture; raw S2 captures land in $WORK/captures.jsonl
 set -u
 WORK="${1:-$(mktemp -d)}"
-JANUS="/home/josh/janus/.venv/bin/janus"
-export CUDA_VISIBLE_DEVICES="" USE_TF=0 JANUS_S2_BASE_URL=http://127.0.0.1:8081/v1
+JANUS="${JANUS_BIN:-janus}"
+VPYTHON="${JANUS_PYTHON:-python}"
+export CUDA_VISIBLE_DEVICES="" USE_TF=0
 mkdir -p "$WORK"
 
 fixture() {  # name, calc-like module body, test body, prompt
@@ -19,7 +22,7 @@ fixture() {  # name, calc-like module body, test body, prompt
 run_fixture() {
   local name="$1" prompt="$2" dir="$WORK/$1"
   local before; before=$(cat "$dir/mod.py")
-  (cd "$dir" && JANUS_VERIFY_COMMAND="/home/josh/janus/.venv/bin/python -m pytest -q test_mod.py" \
+  (cd "$dir" && JANUS_VERIFY_COMMAND="$VPYTHON -m pytest -q test_mod.py" \
      JANUS_S2_LOG_RAW="$WORK/captures.jsonl" \
      timeout 600 "$JANUS" run --yes --s1-backend laya "$prompt" --root "$dir" \
      > "$WORK/$name.log" 2>&1)
