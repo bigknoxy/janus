@@ -1,0 +1,11 @@
+{
+  "name": "hidden_contract",
+  "bug_class": "repair-forcing",
+  "prompt": "fix slugify in mod.py: it must produce URL-safe slugs",
+  "files": {
+    "mod.py": "def slugify(s):\n    return s.replace(' ', '_')\n"
+  },
+  "tests": {
+    "test_mod.py": "from mod import slugify\n\ndef test_slugify_contract():\n    assert slugify('Hello World!') == 'hello-world'\n    assert slugify('A  B') == 'a-b'\n"
+  }
+}

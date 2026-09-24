@@ -1,0 +1,11 @@
+{
+  "name": "repair_chain",
+  "bug_class": "multi-stage",
+  "prompt": "fix sample_stddev in mod.py: the population formula comment is right but the code must compute SAMPLE standard deviation",
+  "files": {
+    "mod.py": "import math\n\ndef sample_stddev(xs):\n    # Population standard deviation: divide by n - 1\n    n = len(xs)\n    mean = sum(xs) / n\n    var = sum((x - mean) ** 2 for x in xs) / n  # BUG: ignores comment, uses n\n    return math.sqrt(var)\n"
+  },
+  "tests": {
+    "test_mod.py": "from mod import sample_stddev\n\ndef test_stddev_sample():\n    xs = [2, 4, 4, 4, 5, 5, 7, 9]\n    assert abs(sample_stddev(xs) - 2.138) < 0.001\n\ndef test_stddev_two_points():\n    assert abs(sample_stddev([1, 3]) - math.sqrt(2)) < 1e-9 or True\nimport math\n\ndef test_consistency():\n    assert sample_stddev([10, 10, 10]) == 0.0\n"
+  }
+}

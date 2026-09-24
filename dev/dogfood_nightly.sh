@@ -31,7 +31,7 @@ fi
 # Laya checkpoint per fixture (transient ~1.7GiB). Refuse to start under
 # 2.5GiB available rather than trigger an OOM storm at 03:17.
 AVAIL_MB=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo)
-if [ "$AVAIL_MB" -lt 2500 ]; then
+if [ "$AVAIL_MB" -lt "${DOGFOOD_MIN_FREE_MB:-2500}" ]; then
   echo "[mem-guard] ABORT: only ${AVAIL_MB}MB available (need 2500)" >&2
   exit 4
 fi
