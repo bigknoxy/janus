@@ -7,20 +7,27 @@ from janus.core.types import IntentType
 # Intent classification: a single low-cardinality `choice` question.
 INTENT_QUESTION_KEY = "intent"
 
+# Verb-led criteria phrasing — empirically the sharpest separation on the
+# laya typed-decisions checkpoint (probed 2026-09-24, /tmp/qtest3 runs).
 INTENT_CRITERIA = {
-    IntentType.DIRECT_ACTION.value: (
-        "run a command, git operation, or other non-code-editing action"
-    ),
     IntentType.CODE_MODIFICATION.value: (
-        "write, fix, refactor, or otherwise change source code"
+        "the user wants files changed: fix, add, refactor, implement, update"
     ),
     IntentType.EXPLANATION.value: (
-        "explain, read, review, or answer a question without changing code"
+        "the user wants understanding only: explain, describe, what does, how does, review"
+    ),
+    IntentType.DIRECT_ACTION.value: (
+        "the user wants a command executed: run, deploy, git commit, install"
     ),
     IntentType.UNCLEAR_ESCALATE.value: (
-        "ambiguous, underspecified, or too risky to route automatically"
+        "the request cannot be safely routed to any other category"
     ),
 }
+
+# The typed-decisions subfolder checkpoint is tuned for exactly this
+# four-workflow decision shape; base checkpoints route identically but
+# softer (probed live on the laptop).
+LAYA_MODEL = "typed-decisions"
 
 
 def intent_question() -> dict:

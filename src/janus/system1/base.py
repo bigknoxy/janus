@@ -20,17 +20,24 @@ class DecisionEngineProtocol(Protocol):
 
 
 def enforce_confidence_gate(
-    decision: System1Decision, threshold: float
+    decision: System1Decision, threshold: float, margin_floor: float = 0.20
 ) -> System1Decision:
     """Single home for the escalation rule (DRY).
 
-    Below the threshold the honest outcome is UNCLEAR_ESCALATE: the
-    orchestrator asks the human before any generative inference is spent.
+    When the engine reports a margin (top1 - top2 probability gap), the
+    margin governs: diffuse/ambiguous routing escalates, confident routing
+    proceeds. Engines without margins (mock, legacy) fall back to the
+    absolute-confidence threshold. Engines that deliberately escalate are
+    always respected.
     """
-    if decision.confidence >= threshold and decision.intent != IntentType.UNCLEAR_ESCALATE:
-        return decision
-    if decision.confidence >= threshold:
+    if decision.intent == IntentType.UNCLEAR_ESCALATE:
         return decision  # engine deliberately escalated; respect it
+    if decision.margin is not None:
+        ambiguous = decision.margin < margin_floor
+    else:
+        ambiguous = decision.confidence < threshold
+    if not ambiguous:
+        return decision
     return decision.model_copy(
         update={"intent": IntentType.UNCLEAR_ESCALATE, "requires_s2": False}
     )

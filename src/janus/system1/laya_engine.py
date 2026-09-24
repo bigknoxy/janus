@@ -13,6 +13,7 @@ from janus.core.types import IntentType, System1Decision
 from janus.system1.base import enforce_confidence_gate
 from janus.system1.schemas import (
     INTENT_QUESTION_KEY,
+    LAYA_MODEL,
     file_relevance_question,
     intent_question,
 )
@@ -43,7 +44,9 @@ class LayaDecisionEngine:
         for path in candidates:
             questions[f"file:{path}"] = file_relevance_question(path, "")
 
-        result: dict[str, Any] = self._router.predict(state, questions)
+        result: dict[str, Any] = self._router.predict(
+            state, questions, model=LAYA_MODEL
+        )
         answers = result.get("answers", {})
 
         intent_answer = answers.get(INTENT_QUESTION_KEY, {})
@@ -51,8 +54,10 @@ class LayaDecisionEngine:
             intent = IntentType(intent_answer.get("choice", IntentType.UNCLEAR_ESCALATE))
         except ValueError:
             intent = IntentType.UNCLEAR_ESCALATE
-        confidence = float(intent_answer.get("confidence", 0.0))
-        confidence = min(max(confidence, 0.0), 1.0)
+        probs = intent_answer.get("probabilities") or {}
+        confidence = min(max(float(probs.get(intent, 0.0)), 0.0), 1.0)
+        ranked = sorted((float(v) for v in probs.values()), reverse=True)
+        margin = (ranked[0] - ranked[1]) if len(ranked) >= 2 else 1.0
 
         target_files = [
             key[len("file:"):]
@@ -63,6 +68,7 @@ class LayaDecisionEngine:
         decision = System1Decision(
             intent=intent,
             confidence=confidence,
+            margin=margin,
             target_files=target_files,
             target_symbols=[],  # symbol-level narrowing is orchestrator+pruner work
             micro_instruction=" ".join(user_prompt.split()),

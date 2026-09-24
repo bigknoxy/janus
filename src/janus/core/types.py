@@ -18,6 +18,12 @@ class System1Decision(BaseModel):
 
     intent: IntentType
     confidence: float = Field(..., ge=0.0, le=1.0)
+    margin: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="top1 - top2 probability gap; the real ambiguity signal",
+    )
     target_files: list[str] = Field(default_factory=list)
     target_symbols: list[str] = Field(
         default_factory=list, description="Target function or class names"

@@ -45,6 +45,31 @@ class TestConfidenceGate:
         )
         assert enforce_confidence_gate(decision, 0.85).requires_s2 is True
 
+    def test_margin_governs_when_present(self):
+        """ISC-1.1: high-margin/low-prob routes; low-margin escalates."""
+        confident = System1Decision(
+            intent=IntentType.CODE_MODIFICATION, confidence=0.46, margin=0.31,
+            micro_instruction="x", requires_s2=True,
+        )
+        out = enforce_confidence_gate(confident, 0.85)
+        assert out.intent == IntentType.CODE_MODIFICATION and out.requires_s2
+
+        diffuse = System1Decision(
+            intent=IntentType.CODE_MODIFICATION, confidence=0.34, margin=0.08,
+            micro_instruction="x", requires_s2=True,
+        )
+        out = enforce_confidence_gate(diffuse, 0.85)
+        assert out.intent == IntentType.UNCLEAR_ESCALATE and not out.requires_s2
+
+        boundary = System1Decision(
+            intent=IntentType.EXPLANATION, confidence=0.5, margin=0.20,
+            micro_instruction="x", requires_s2=False,
+        )
+        assert (
+            enforce_confidence_gate(boundary, 0.85).intent
+            == IntentType.EXPLANATION
+        )
+
     def test_deliberate_engine_escalation_is_respected(self):
         decision = System1Decision(
             intent=IntentType.UNCLEAR_ESCALATE,
