@@ -105,10 +105,6 @@ def extract_symbol(source: str, symbol: str, language: str = "python") -> str | 
     return _node_text(source, node)
 
 
-def _first_line(text: str) -> str:
-    return text.split("\n", 1)[0]
-
-
 def skeleton(source: str, language: str = "python") -> str:
     """Signature-only rendering: every top-level symbol body -> `...`.
 

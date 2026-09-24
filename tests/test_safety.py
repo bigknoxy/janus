@@ -100,6 +100,51 @@ class TestCreateFile:
         assert (tmp_path / "mod.py").read_text() == "x = 1\n"
 
 
+class TestOrchestratorBranches:
+    def test_no_slices_escalates(self, tmp_path: Path):
+        orch = make_orchestrator(s2_returning("no blocks"), tmp_path)
+        report = orch.run_forced(
+            System1Decision(target_files=["does_not_exist.py"], **MODIFY),
+            str(tmp_path),
+        )
+        assert report.status == RunStatus.ESCALATE
+        assert "no matching" in report.message
+
+    def test_traversal_in_collect_slices_raises(self, tmp_path: Path):
+        orch = make_orchestrator(s2_returning("no blocks"), tmp_path)
+        with pytest.raises(Exception, match="escapes"):
+            orch.run_forced(
+                System1Decision(target_files=["../../etc/passwd"], **MODIFY),
+                str(tmp_path),
+            )
+
+    def test_ambiguous_pathless_patch_rejected(self, tmp_path: Path):
+        (tmp_path / "a.py").write_text("x = 1\n")
+        (tmp_path / "b.py").write_text("x = 1\n")
+        raw = "<<<<<<< SEARCH\nx = 1\n=======\nx = 2\n>>>>>>> REPLACE"
+        orch = make_orchestrator(s2_returning(raw), tmp_path)
+        report = orch.run_forced(
+            System1Decision(target_files=["a.py", "b.py"], **MODIFY), str(tmp_path)
+        )
+        assert report.status == RunStatus.FAILED_ROLLED_BACK
+        assert (tmp_path / "a.py").read_text() == "x = 1\n"
+        assert (tmp_path / "b.py").read_text() == "x = 1\n"
+
+    def test_read_only_and_direct_statuses(self, tmp_path: Path):
+        orch = make_orchestrator(s2_returning(""), tmp_path)
+        from janus.core.types import IntentType as IT
+
+        ro = orch.run_forced(
+            System1Decision(intent=IT.EXPLANATION, confidence=0.9,
+                            micro_instruction="x", requires_s2=False),
+            str(tmp_path),
+        )
+        # run_forced always modifies; READ_ONLY flows through run() instead:
+        assert ro.status in (RunStatus.ESCALATE, RunStatus.FAILED_ROLLED_BACK)
+        report = orch.run("explain calc", str(tmp_path), "calc.py def x")
+        assert report.status == RunStatus.READ_ONLY
+
+
 class TestRepairLoopTransparency:
     def test_internal_bugs_propagate_not_retry(self, tmp_path: Path):
         """P0-3: an internal TypeError in the loop must crash the run, not

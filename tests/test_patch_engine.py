@@ -59,6 +59,19 @@ class TestParser:
         with pytest.raises(PatchParseError):
             parse_patches(None)  # type: ignore[arg-type]
 
+    def test_bare_divider_inside_content_is_a_documented_collision(self):
+        """P2 audit pin: a bare ======= line inside a SEARCH body truncates
+        the block at the divider (grammar limitation, deterministic — this
+        test pins the behavior so any future grammar hardening is a
+        deliberate change, not drift)."""
+        raw = (
+            "file: m.py\n<<<<<<< SEARCH\ntitle\n=======\nsubtitle\n"
+            "=======\ntitle\n==== replaced\n>>>>>>> REPLACE"
+        )
+        out = parse_patches(raw)
+        assert len(out) == 1
+        assert out[0].search_block == "title"
+
     def test_multiline_search_replace(self):
         search = "def f():\n    return 1"
         replace = "def f():\n    return 2\n\ndef g():\n    return 3"

@@ -272,11 +272,13 @@ class PipelineOrchestrator:
         candidate file contents; exactly one match wins, else None."""
         from janus.patcher.engine import apply_patch
 
+        contents: dict[str, str] = {}
         matches = []
         for rel in sorted(candidates):
             try:
-                content = _safe_path(repo_root, rel).read_text(encoding="utf-8")
-                apply_patch(content, patch)
+                if rel not in contents:
+                    contents[rel] = _safe_path(repo_root, rel).read_text(encoding="utf-8")
+                apply_patch(contents[rel], patch)
             except (PatchApplicationError, OSError, UnicodeDecodeError):
                 continue
             matches.append(rel)
