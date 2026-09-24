@@ -192,8 +192,8 @@ class PipelineOrchestrator:
                         slices[rel] = slice_
             else:
                 # No symbol named: whole-file slice only for small files;
-                # large files need S1 to name a symbol — escalate instead.
-                if len(source) < 4_000:
+                # large files need a symbol — escalate instead.
+                if len(source) < 12_000:
                     slices[rel] = source
         return slices
 
