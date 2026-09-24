@@ -27,7 +27,7 @@ PKG="janus-code$EXTRA @ git+https://github.com/$REPO.git@$JANUS_REF"
 if command -v pipx >/dev/null 2>&1; then
   PIP_NO_CACHE_DIR=1 pipx install --force "$PKG" || err "pipx install failed"
   BIN_DIR="$HOME/.local/bin"
-elif command -v pipx >/dev/null 2>&1 || true; then :; else
+else
   if ! command -v python3 >/dev/null 2>&1; then
     err "python3 (3.11+) is required."
   fi
