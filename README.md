@@ -1,50 +1,86 @@
 # Janus
 
-> Two faces, one gate. A terminal coding engine that makes small local models
-> punch far above their weight by divorcing *decisions* from *generation*.
+> Two faces, one gate. A local-only coding engine where **a decision model
+> decides** and **a small LLM generates** — never both.
 
-Janus splits the coding assistant into two cognitive tiers:
+Janus makes 3B–8B models punch far above their weight by splitting the
+coding-assistant problem at its actual seam:
 
-- **System 1 — the gate (Laya).** A non-autoregressive decision model
-  ([convaiinnovations/laya](https://huggingface.co/convaiinnovations/laya))
-  that answers typed questions with calibrated probabilities in a single
-  forward pass. It classifies intent, picks target files/symbols, and decides
-  whether to proceed or escalate — it can never emit prose or hallucinate JSON.
-- **System 2 — the hand (local LLM).** A compact model (qwen3-4b by default,
-  via an OpenAI-compatible endpoint) that receives only Tree-sitter-pruned
-  AST slices and must respond in strict `<<<<<<< SEARCH / ======= / >>>>>>> REPLACE`
-  patch blocks.
-- **The verifier.** A deterministic patch engine (exact → whitespace-normalized
-  match, reject otherwise) and a subprocess test runner close the loop, with
-  System 1 triaging failures into one-shot repair prompts.
+- **System 1 — the gate.** A non-autoregressive decision model
+  ([Laya](https://huggingface.co/convaiinnovations/laya)) answers typed
+  questions (intent, file targeting) in a single forward pass. It cannot
+  emit prose, so it cannot hallucinate JSON. Ambiguity escalates to a human
+  instead of spending generation.
+- **System 2 — the hand.** A compact local LLM (qwen3-4b by default, any
+  OpenAI-compatible endpoint) receives only Tree-sitter-pruned AST slices
+  and must reply in strict `<<<<<<< SEARCH / ======= / >>>>>>> REPLACE`
+  blocks.
+- **The safety net.** A deterministic patch engine (exact →
+  whitespace-normalized, else reject), real subprocess verification, and
+  byte-for-byte rollback on failure — including deleting files a failed run
+  created.
 
-## Status
-
-Scaffold phase. The deterministic core (types, config, patch parser/engine)
-is implemented and falsifier-tested; model integrations land next.
+Runs entirely on a 2-core, 14 GB laptop. No cloud calls.
 
 ## Install
 
 ```bash
 pip install -e ".[dev]"        # core + tests
-pip install -e ".[dev,laya]"   # + System 1 (Laya checkpoint, ~808MB)
+pip install -e ".[dev,laya]"   # + System 1 (downloads ~808MB checkpoint once)
 ```
 
-## Test
+## Use
 
 ```bash
-pytest
+janus doctor --s2-url http://localhost:8081/v1   # check S1, S2, repo map
+janus run "fix first_n in mod.py: it returns one item too few" --root .
 ```
+
+Every run: intent routed by S1 (low margin → escalate), targeted files only,
+patch applied in memory, tests run, repair loop on failure, total rollback
+on terminal failure.
+
+## Test & eval
+
+```bash
+pytest                          # 101 tests, 90%+ coverage gate on the core
+python dev/eval.py --md report.md   # fixture-matrix eval with ablations
+```
+
+`eval_corpus/` holds fixtures as data. Baseline vs a real qwen3-4b
+(2026-09-24): easy tier 8/8, hard tier 5/5 — and the hard tier's ablation
+proves the gate earns its keep (5/5 with, 3/5 without).
 
 ## Layout
 
 ```
 src/janus/
-├── core/        # types, config, orchestrator
-├── system1/     # DecisionEngineProtocol + Laya engine
-├── system2/     # GenerativeEngineProtocol + local-LLM client
-├── context/     # Tree-sitter AST pruner, repo map
-├── patcher/     # search/replace parser + applicator (deterministic core)
-├── verification/# test runner + failure triage
-└── cli.py       # Typer entrypoint
+├── core/        # types, config, orchestrator (pipeline + rollback)
+├── system1/     # DecisionEngineProtocol + Laya (in-proc or laya-serve)
+├── system2/     # GenerativeEngineProtocol + OpenAI-compatible client
+├── context/     # Tree-sitter AST pruner (registry: python, javascript)
+├── patcher/     # search/replace parser + applicator (deterministic)
+├── verification/# subprocess runner + failure triage
+└── cli.py       # Typer CLI (run, doctor)
 ```
+
+## Design principles
+
+- Decisions and generation are different cognitive acts — keep them apart.
+- Determinism beats intelligence at boundaries: parsing, matching, triage,
+  and rollback are code, never models.
+- A system that cannot restore byte-parity after failure has no business
+  writing to disk. Janus is fuzzed (hypothesis) and audit-hardened (path
+  traversal containment, internal-bug transparency) to earn that right.
+- Context is scarce: models see slices and skeletons, never whole files.
+
+## Status
+
+Working, self-hosted, and measured. See `eval_corpus/README.md` for the
+corpus contract and `eval_report.md` (git history) for runs. Known limits
+tracked in the project ISA (not published): laya-serve parity pending
+hardware headroom, repair-loop differential fixture pending.
+
+## License
+
+Apache-2.0.
