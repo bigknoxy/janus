@@ -12,10 +12,10 @@ from janus.core.config import JanusSettings
 from janus.core.types import IntentType, System1Decision
 from janus.system1.base import enforce_confidence_gate
 from janus.system1.schemas import (
-    INTENT_QUESTION_KEY,
+    DEFAULT_MARGIN_FLOOR,
     LAYA_MODEL,
     file_relevance_question,
-    intent_question,
+    intent_questions,
 )
 
 
@@ -37,7 +37,7 @@ class LayaDecisionEngine:
     def evaluate(self, user_prompt: str, repo_summary: str) -> System1Decision:
         state = {"request": user_prompt, "repository": repo_summary}
 
-        questions: dict[str, dict] = {INTENT_QUESTION_KEY: intent_question()}
+        questions: dict[str, dict] = intent_questions()
         # Candidate files = one noul question per repo_map line that looks
         # like a path, so file selection stays batchable and unbounded.
         candidates = _candidate_files(repo_summary)
@@ -49,15 +49,22 @@ class LayaDecisionEngine:
         )
         answers = result.get("answers", {})
 
-        intent_answer = answers.get(INTENT_QUESTION_KEY, {})
+        scores = {
+            key[len("intent:"):]: float(ans.get("noul", 0.0))
+            for key, ans in answers.items()
+            if key.startswith("intent:")
+        }
         try:
-            intent = IntentType(intent_answer.get("choice", IntentType.UNCLEAR_ESCALATE))
-        except ValueError:
-            intent = IntentType.UNCLEAR_ESCALATE
-        probs = intent_answer.get("probabilities") or {}
-        confidence = min(max(float(probs.get(intent, 0.0)), 0.0), 1.0)
-        ranked = sorted((float(v) for v in probs.values()), reverse=True)
-        margin = (ranked[0] - ranked[1]) if len(ranked) >= 2 else 1.0
+            ranked_intents = sorted(scores, key=scores.get, reverse=True)  # type: ignore[arg-type]
+            intent = IntentType(ranked_intents[0])
+        except (IndexError, ValueError):
+            intent, scores, ranked_intents = IntentType.UNCLEAR_ESCALATE, {}, []
+        confidence = min(max(scores.get(intent, 0.0), 0.0), 1.0)
+        margin = (
+            scores[ranked_intents[0]] - scores[ranked_intents[1]]
+            if len(ranked_intents) >= 2
+            else 1.0
+        )
 
         target_files = [
             key[len("file:"):]
@@ -74,7 +81,11 @@ class LayaDecisionEngine:
             micro_instruction=" ".join(user_prompt.split()),
             requires_s2=intent == IntentType.CODE_MODIFICATION,
         )
-        return enforce_confidence_gate(decision, self._settings.confidence_threshold)
+        return enforce_confidence_gate(
+            decision,
+            self._settings.confidence_threshold,
+            margin_floor=getattr(self._settings, "s1_margin_floor", DEFAULT_MARGIN_FLOOR),
+        )
 
 
 def _candidate_files(repo_summary: str) -> list[str]:

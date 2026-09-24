@@ -20,6 +20,12 @@ class JanusSettings(BaseSettings):
     confidence_threshold: float = Field(
         default=0.85, ge=0.0, le=1.0, description="Below this, escalate to the user"
     )
+    s1_margin_floor: float = Field(
+        default=0.04,
+        ge=0.0,
+        le=0.5,
+        description="Top1-top2 intent probability gap below which S1 escalates",
+    )
 
     # --- System 2 (local LLM, OpenAI-compatible) ---
     s2_base_url: str = Field(
