@@ -24,12 +24,26 @@ from janus.core.types import (
     VerificationResult,
 )
 from janus.patcher.engine import PatchApplicationError, apply_all
-from janus.patcher.parser import parse_patches
+from janus.patcher.parser import PatchParseError, parse_patches
 from janus.system1.base import DecisionEngineProtocol
 from janus.system2.base import GenerativeEngineProtocol
+from janus.system2.client import GenerationError
 from janus.system2.prompt_templates import build_user_prompt
 from janus.verification.runner import VerificationRunner
 from janus.verification.triage import triage_failure
+
+
+def _safe_path(repo_root: str, rel: str) -> Path:
+    """Resolve a patch/slice target and refuse escapes from the repo.
+
+    P0-1 (audit 2026-09-24): model output is untrusted BY DESIGN; the
+    write path must enforce that belief.
+    """
+    root = Path(repo_root).resolve()
+    resolved = (root / rel).resolve()
+    if resolved != root and root not in resolved.parents:
+        raise PatchApplicationError(f"path escapes repo root: {rel!r}")
+    return resolved
 
 
 def _whole_slice_fallback(raw: str, slices: dict[str, str]) -> list[PatchBlock]:
@@ -120,7 +134,7 @@ class PipelineOrchestrator:
                 message="no matching symbols/files could be sliced; clarify targets",
             )
 
-        originals: dict[str, str] = {}
+        originals: dict[str, str | None] = {}  # None = file did not exist
         repair_note: str | None = None
         last_error = ""
 
@@ -131,7 +145,9 @@ class PipelineOrchestrator:
             try:
                 raw = self._s2.generate_patch(prompt)
                 patches = parse_patches(raw)
-            except Exception as e:  # generation/parse failure is retry data
+            except (GenerationError, PatchParseError) as e:
+                # Model-side failures are retry data. Everything else is a
+                # bug in OUR code and must crash loudly (P0-3).
                 last_error = f"{type(e).__name__}: {e}"
                 repair_note = f"generation failed: {last_error}"
                 continue
@@ -182,7 +198,10 @@ class PipelineOrchestrator:
         for rel in decision.target_files:
             path = Path(repo_root) / rel
             try:
+                path = _safe_path(repo_root, rel)
                 source = path.read_text(encoding="utf-8")
+            except PatchApplicationError:
+                raise  # traversal must not silently become "no slices"
             except (OSError, UnicodeDecodeError):
                 continue
             if decision.target_symbols:
@@ -201,11 +220,12 @@ class PipelineOrchestrator:
         self,
         patches: list[PatchBlock],
         repo_root: str,
-        originals: dict[str, str],
+        originals: dict[str, str | None],
         candidate_files: set[str] | None = None,
     ) -> None:
         """Apply in memory per file; write only if every patch for that
-        file applies. Originals are captured before the first write."""
+        file applies. Originals are captured before the first write
+        (None = file did not exist → restore deletes it, restore-parity)."""
         by_file: dict[str, list[PatchBlock]] = {}
         known_files = {p.file_path for p in patches if p.file_path}
         universe = known_files | (candidate_files or set())
@@ -225,10 +245,23 @@ class PipelineOrchestrator:
             by_file.setdefault(target, []).append(patch)
 
         for rel, file_patches in by_file.items():
-            path = Path(repo_root) / rel
+            path = _safe_path(repo_root, rel)
             if rel not in originals:
-                originals[rel] = path.read_text(encoding="utf-8")
-            new_content = apply_all(originals[rel], file_patches)
+                try:
+                    originals[rel] = path.read_text(encoding="utf-8")
+                except FileNotFoundError:
+                    originals[rel] = None
+                except (OSError, UnicodeDecodeError) as e:
+                    raise PatchApplicationError(f"cannot read {rel}: {e}") from e
+            if originals[rel] is None:
+                # Create-file semantics: concatenated replace blocks.
+                if any(p.search_block.strip() != "" for p in file_patches):
+                    raise PatchApplicationError(
+                        f"{rel} does not exist; new files need empty search blocks"
+                    )
+                new_content = "\n".join(p.replace_block for p in file_patches)
+            else:
+                new_content = apply_all(originals[rel] or "", file_patches)
             path.write_text(new_content, encoding="utf-8")
 
     @staticmethod
@@ -242,7 +275,7 @@ class PipelineOrchestrator:
         matches = []
         for rel in sorted(candidates):
             try:
-                content = (Path(repo_root) / rel).read_text(encoding="utf-8")
+                content = _safe_path(repo_root, rel).read_text(encoding="utf-8")
                 apply_patch(content, patch)
             except (PatchApplicationError, OSError, UnicodeDecodeError):
                 continue
@@ -250,6 +283,9 @@ class PipelineOrchestrator:
         return matches[0] if len(matches) == 1 else None
 
     @staticmethod
-    def _restore(originals: dict[str, str], repo_root: str) -> None:
+    def _restore(originals: dict[str, str | None], repo_root: str) -> None:
         for rel, content in originals.items():
-            (Path(repo_root) / rel).write_text(content, encoding="utf-8")
+            if content is None:
+                _safe_path(repo_root, rel).unlink(missing_ok=True)
+            else:
+                _safe_path(repo_root, rel).write_text(content, encoding="utf-8")
