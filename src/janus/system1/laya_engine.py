@@ -40,9 +40,13 @@ class LayaDecisionEngine:
         questions: dict[str, dict] = intent_questions()
         # Candidate files = one noul question per repo_map line that looks
         # like a path, so file selection stays batchable and unbounded.
+        # The skeleton signature goes inside each question: path-only
+        # relevance starved the noul head on generic names (probe 2026-09-24).
         candidates = _candidate_files(repo_summary)
         for path in candidates:
-            questions[f"file:{path}"] = file_relevance_question(path, "")
+            questions[f"file:{path}"] = file_relevance_question(
+                path, candidates[path]
+            )
 
         result: dict[str, Any] = self._router.predict(
             state, questions, model=LAYA_MODEL
@@ -88,13 +92,14 @@ class LayaDecisionEngine:
         )
 
 
-def _candidate_files(repo_summary: str) -> list[str]:
-    """Extract path-like tokens from a repo_map summary (one per line)."""
-    paths = []
+def _candidate_files(repo_summary: str) -> dict[str, str]:
+    """Map path-like tokens from a repo_map summary to their signature lines."""
+    paths: dict[str, str] = {}
     for line in repo_summary.splitlines():
-        token = line.strip().split(" ", 1)[0]
+        stripped = line.strip()
+        token = stripped.split(" ", 1)[0]
         if "/" in token or "." in token:
-            paths.append(token)
-    return paths[:64]  # question budget guard
+            paths[token] = stripped[len(token):].strip()[:120]
+    return dict(list(paths.items())[:64])  # question budget guard
 
 

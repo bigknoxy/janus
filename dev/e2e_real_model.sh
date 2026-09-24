@@ -19,7 +19,7 @@ fixture() {  # name, calc-like module body, test body, prompt
 run_fixture() {
   local name="$1" prompt="$2" dir="$WORK/$1"
   local before; before=$(cat "$dir/mod.py")
-  (cd "$dir" && JANUS_VERIFY_COMMAND="python3 -m pytest -q test_mod.py" \
+  (cd "$dir" && JANUS_VERIFY_COMMAND="/home/josh/janus/.venv/bin/python -m pytest -q test_mod.py" \
      JANUS_S2_LOG_RAW="$WORK/captures.jsonl" \
      timeout 600 "$JANUS" run --yes --s1-backend laya "$prompt" --root "$dir" \
      > "$WORK/$name.log" 2>&1)
@@ -34,13 +34,13 @@ run_fixture() {
   fi
 }
 
-# --- Fixture 1: wrong operator -------------------------------------------------
+# --- Fixture 1: semantics bug (multiplies instead of discounting) -----------------
 P1=$(fixture f1_operator 'def discount(price, pct):
-    return price - pct  # BUG: ignores percentage scaling' 'from mod import discount
+    return price * pct  # BUG: should subtract pct fraction of price' 'from mod import discount
 
 def test_discount():
-    assert discount(200, 10) == 190 + 0 or abs(discount(200, 10) - 190.0) < 1e-9
-' "fix the discount function in mod.py: it should subtract pct percent of the price")
+    assert abs(discount(200, 0.1) - 180.0) < 1e-9
+' "fix the discount function in mod.py: it should subtract pct as a fractional discount from the price")
 
 # --- Fixture 2: off by one ------------------------------------------------------
 P2=$(fixture f2_offbyone 'def first_n(items, n):
