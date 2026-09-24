@@ -59,7 +59,22 @@ class LocalGenerativeEngine:
         data = self._transport(
             f"{s.s2_base_url.rstrip('/')}/chat/completions", payload, s.s2_timeout_s
         )
-        return _extract_content(data)
+        content = _extract_content(data)
+        if s.s2_log_raw:
+            _append_raw_log(s.s2_log_raw, prompt, content)
+        return content
+
+
+def _append_raw_log(path: str, prompt: str, content: str) -> None:
+    """Dev capture: every raw S2 reply is corpus for the falsifier suite."""
+    import json
+    from pathlib import Path
+
+    try:
+        with Path(path).open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps({"prompt": prompt, "raw": content}) + "\n")
+    except OSError:
+        pass
 
 
 def _extract_content(data: dict[str, Any]) -> str:

@@ -36,6 +36,9 @@ class JanusSettings(BaseSettings):
     s2_temperature: float = Field(default=0.0, ge=0.0)
     s2_max_tokens: int = Field(default=2048, gt=0)
     s2_timeout_s: float = Field(default=300.0, gt=0.0)
+    s2_log_raw: str = Field(
+        default="", description="Path to append raw S2 outputs (falsifier corpus)"
+    )
 
     # --- Verification ---
     verify_command: str = Field(
