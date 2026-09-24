@@ -1,0 +1,11 @@
+{
+  "name": "wrong_operator",
+  "bug_class": "operator",
+  "prompt": "fix the discount function in mod.py: it must subtract pct as a fraction of the price",
+  "files": {
+    "mod.py": "def discount(price, pct):\n    return price * pct  # BUG\n"
+  },
+  "tests": {
+    "test_mod.py": "from mod import discount\n\ndef test_discount():\n    assert abs(discount(200, 0.1) - 180.0) < 1e-9\n"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "mutation_vs_copy",
+  "bug_class": "mutation",
+  "prompt": "fix append_item in mod.py: it must not mutate the input list",
+  "files": {
+    "mod.py": "def append_item(lst, item):\n    lst.append(item)  # BUG: mutates\n    return lst\n"
+  },
+  "tests": {
+    "test_mod.py": "from mod import append_item\n\ndef test_no_mutate():\n    orig = [1]\n    out = append_item(orig, 2)\n    assert orig == [1]\n    assert out == [1, 2]\n"
+  }
+}

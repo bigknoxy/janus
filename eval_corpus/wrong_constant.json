@@ -1,0 +1,11 @@
+{
+  "name": "wrong_constant",
+  "bug_class": "wrong-constant",
+  "prompt": "fix celsius_to_fahrenheit in mod.py: the formula is wrong",
+  "files": {
+    "mod.py": "def celsius_to_fahrenheit(c):\n    return c * 9 / 5 + 30  # BUG\n"
+  },
+  "tests": {
+    "test_mod.py": "from mod import celsius_to_fahrenheit\n\ndef test_c2f():\n    assert abs(celsius_to_fahrenheit(100) - 212) < 1e-9\n"
+  }
+}

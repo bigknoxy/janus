@@ -1,0 +1,218 @@
+[
+  {
+    "fixture": "inverted_condition",
+    "mode": "full",
+    "outcome": "PASSED",
+    "seconds": 12.9,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "loop_boundary",
+    "mode": "full",
+    "outcome": "PASSED",
+    "seconds": 19.9,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "missing_guard",
+    "mode": "full",
+    "outcome": "PASSED",
+    "seconds": 13.5,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "mutation_vs_copy",
+    "mode": "full",
+    "outcome": "PASSED",
+    "seconds": 14.9,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "off_by_one",
+    "mode": "full",
+    "outcome": "PASSED",
+    "seconds": 12.7,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "string_format",
+    "mode": "full",
+    "outcome": "PASSED",
+    "seconds": 12.0,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "wrong_constant",
+    "mode": "full",
+    "outcome": "PASSED",
+    "seconds": 16.5,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "wrong_operator",
+    "mode": "full",
+    "outcome": "PASSED",
+    "seconds": 11.7,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "inverted_condition",
+    "mode": "no-gate",
+    "outcome": "PASSED",
+    "seconds": 14.1,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "loop_boundary",
+    "mode": "no-gate",
+    "outcome": "PASSED",
+    "seconds": 21.5,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "missing_guard",
+    "mode": "no-gate",
+    "outcome": "PASSED",
+    "seconds": 13.8,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "mutation_vs_copy",
+    "mode": "no-gate",
+    "outcome": "PASSED",
+    "seconds": 15.6,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "off_by_one",
+    "mode": "no-gate",
+    "outcome": "PASSED",
+    "seconds": 12.1,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "string_format",
+    "mode": "no-gate",
+    "outcome": "PASSED",
+    "seconds": 42.9,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "wrong_constant",
+    "mode": "no-gate",
+    "outcome": "PASSED",
+    "seconds": 19.2,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "wrong_operator",
+    "mode": "no-gate",
+    "outcome": "PASSED",
+    "seconds": 12.1,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "inverted_condition",
+    "mode": "no-repair",
+    "outcome": "PASSED",
+    "seconds": 12.0,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "loop_boundary",
+    "mode": "no-repair",
+    "outcome": "PASSED",
+    "seconds": 18.2,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "missing_guard",
+    "mode": "no-repair",
+    "outcome": "PASSED",
+    "seconds": 13.2,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "mutation_vs_copy",
+    "mode": "no-repair",
+    "outcome": "PASSED",
+    "seconds": 15.0,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "off_by_one",
+    "mode": "no-repair",
+    "outcome": "PASSED",
+    "seconds": 11.7,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "string_format",
+    "mode": "no-repair",
+    "outcome": "PASSED",
+    "seconds": 11.7,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "wrong_constant",
+    "mode": "no-repair",
+    "outcome": "PASSED",
+    "seconds": 14.0,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  },
+  {
+    "fixture": "wrong_operator",
+    "mode": "no-repair",
+    "outcome": "PASSED",
+    "seconds": 11.7,
+    "status": "patched_verified",
+    "repair_note": null,
+    "rep": 0
+  }
+]

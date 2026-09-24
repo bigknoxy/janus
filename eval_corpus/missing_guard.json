@@ -1,0 +1,11 @@
+{
+  "name": "missing_guard",
+  "bug_class": "missing-guard",
+  "prompt": "fix safe_div in mod.py to return None when dividing by zero",
+  "files": {
+    "mod.py": "def safe_div(a, b):\n    return a / b  # BUG\n"
+  },
+  "tests": {
+    "test_mod.py": "from mod import safe_div\n\ndef test_div():\n    assert safe_div(4, 2) == 2\n    assert safe_div(1, 0) is None\n"
+  }
+}

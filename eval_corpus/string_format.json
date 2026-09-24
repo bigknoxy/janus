@@ -1,0 +1,11 @@
+{
+  "name": "string_format",
+  "bug_class": "string-formatting",
+  "prompt": "fix greet in mod.py: it must include the name in the greeting",
+  "files": {
+    "mod.py": "def greet(name):\n    return 'Hello, !'  # BUG\n"
+  },
+  "tests": {
+    "test_mod.py": "from mod import greet\n\ndef test_greet():\n    assert greet('Ada') == 'Hello, Ada!'\n"
+  }
+}

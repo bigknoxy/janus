@@ -1,0 +1,11 @@
+{
+  "name": "inverted_condition",
+  "bug_class": "inverted-condition",
+  "prompt": "fix is_adult in mod.py: the comparison is backwards",
+  "files": {
+    "mod.py": "def is_adult(age):\n    return age < 18  # BUG\n"
+  },
+  "tests": {
+    "test_mod.py": "from mod import is_adult\n\ndef test_adult():\n    assert is_adult(20) is True\n    assert is_adult(10) is False\n"
+  }
+}

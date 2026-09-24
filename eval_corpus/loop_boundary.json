@@ -1,0 +1,11 @@
+{
+  "name": "loop_boundary",
+  "bug_class": "off-by-one",
+  "prompt": "fix factorial in mod.py: the loop range is wrong",
+  "files": {
+    "mod.py": "def factorial(n):\n    result = 1\n    for i in range(1, n):  # BUG\n        result *= i\n    return result\n"
+  },
+  "tests": {
+    "test_mod.py": "from mod import factorial\n\ndef test_factorial():\n    assert factorial(5) == 120\n    assert factorial(0) == 1\n"
+  }
+}

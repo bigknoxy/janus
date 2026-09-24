@@ -1,0 +1,11 @@
+{
+  "name": "off_by_one",
+  "bug_class": "off-by-one",
+  "prompt": "fix first_n in mod.py: it returns one item too few",
+  "files": {
+    "mod.py": "def first_n(items, n):\n    return items[: n - 1]  # BUG\n"
+  },
+  "tests": {
+    "test_mod.py": "from mod import first_n\n\ndef test_first_n():\n    assert first_n([1, 2, 3, 4], 2) == [1, 2]\n"
+  }
+}
