@@ -25,14 +25,16 @@ class LayaDecisionEngine:
     def __init__(self, settings: JanusSettings | None = None) -> None:
         self._settings = settings or JanusSettings()
         try:
-            from laya import Router
+            import laya
         except ImportError as e:  # surfaced at construction, not mid-run
             raise RuntimeError(
                 "laya is not installed; run `pip install janus-code[laya]`"
             ) from e
-        self._router = Router(
-            preload=self._settings.s1_preload, device=self._settings.s1_device
-        )
+        # Single checkpoint direct-load, NOT Router(preload=True): preload
+        # keeps 2 checkpoints resident (~1.5GB) and OOMs the 14GiB laptop
+        # alongside the llama servers. typed-decisions is English-only and
+        # smallest-footprint path to the decision head.
+        self._agent = laya.load(self._settings.s1_checkpoint, subfolder=LAYA_MODEL)
 
     def evaluate(self, user_prompt: str, repo_summary: str) -> System1Decision:
         state = {"request": user_prompt, "repository": repo_summary}
@@ -48,9 +50,7 @@ class LayaDecisionEngine:
                 path, candidates[path]
             )
 
-        result: dict[str, Any] = self._router.predict(
-            state, questions, model=LAYA_MODEL
-        )
+        result: dict[str, Any] = self._agent.predict(state, questions)
         answers = result.get("answers", {})
 
         scores = {
