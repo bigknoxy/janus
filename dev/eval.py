@@ -185,7 +185,7 @@ def main() -> int:
     args = ap.parse_args()
 
     modes = args.modes or list(MODES)
-    fixtures = sorted(args.corpus.glob("*.json"))
+    fixtures = sorted(args.corpus.rglob("*.json"))
     if args.fixture:
         fixtures = [f for f in fixtures if f.stem in args.fixture]
     if not fixtures:
