@@ -1,0 +1,12 @@
+{
+  "name": "real_matchers_nested_json",
+  "bug_class": "real-issue",
+  "origin": "getsentry/responses #815 (commit 175ec74)",
+  "prompt": "fix _filter_dict_recursively in mod.py under 'matchers': it crashes when a nested key holds a dict in one payload but a scalar in the other",
+  "files": {
+    "mod.py": "def _filter_dict_recursively(dict1, dict2):\n    \"\"\"Pre-fix source, getsentry/responses matchers.py @ 175ec74~1\"\"\"\n    filtered_dict = {}\n    for k, val in dict1.items():\n        if k in dict2:\n            if isinstance(val, dict):\n                val = _filter_dict_recursively(val, dict2[k])\n            filtered_dict[k] = val\n    return filtered_dict\n"
+  },
+  "tests": {
+    "test_mod.py": "from mod import _filter_dict_recursively\n\n\ndef test_nested_mismatch_does_not_crash():\n    a = {\"user\": {\"id\": 1}}\n    b = {\"user\": {\"id\": \"1\"}}  # scalar under same key shape\n    assert _filter_dict_recursively(a, b)\n\ndef test_type_mismatch_scalar_dict():\n    assert _filter_dict_recursively({\"a\": {\"x\": 1}}, {\"a\": {\"x\": 2}})\n    # crash case: dict vs scalar\n    out = _filter_dict_recursively({\"a\": {\"x\": 1}}, {\"a\": 5})\n    assert out == {\"a\": {\"x\": 1}}\n"
+  }
+}
