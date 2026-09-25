@@ -1,0 +1,12 @@
+{
+  "name": "real_urlencoded_bytes_body",
+  "bug_class": "real-issue",
+  "origin": "getsentry/responses #821 (commit 8afa534)",
+  "prompt": "fix the request-body parsing in mod.py under 'matchers': byte-encoded form bodies crash urlencoded matching",
+  "files": {
+    "mod.py": "from urllib.parse import parse_qsl\n\n\ndef parse_request_body(body, allow_blank=True):\n    \"\"\"Pre-fix logic, getsentry/responses matchers.py @ 8afa534~1\"\"\"\n    return dict(parse_qsl(body, keep_blank_values=allow_blank)) if body else {}\n"
+  },
+  "tests": {
+    "test_mod.py": "from mod import parse_request_body\n\n\ndef test_str_body():\n    assert parse_request_body(\"a=1&b=2\") == {\"a\": \"1\", \"b\": \"2\"}\n\n\ndef test_bytes_body_no_crash():\n    assert parse_request_body(b\"a=1&b=2\") == {\"a\": \"1\", \"b\": \"2\"}\n\n\ndef test_blank_allowed():\n    assert parse_request_body(b\"a=&b=2\")[\"a\"] == \"\"\n"
+  }
+}
