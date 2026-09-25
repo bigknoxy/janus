@@ -1,0 +1,84 @@
+name: Security
+
+# Mirrors the house convention (bigknoxy/HashPilot security.yml):
+# CodeQL + Gitleaks run via the org-wide reusable workflow; this file adds
+# OSV-Scanner (dependency CVEs across manifests) and actionlint (workflow
+# syntax). All third-party actions are SHA-pinned.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'   # weekly CVE re-scan even on a quiet repo
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
+jobs:
+  security:
+    uses: bigknoxy/.github/.github/workflows/security-reusable.yml@main
+    permissions:
+      contents: read
+      security-events: write   # SARIF upload (CodeQL)
+      pull-requests: write     # dependency-review PR comment
+    with:
+      language: python
+      has_docker: false
+    secrets: inherit
+
+  osv-scanner:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - name: Install + run OSV-Scanner
+        run: |
+          OSV_VERSION=v1.9.2
+          curl -fsSL -o osv-scanner "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64"
+          curl -fsSL "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64.sha256" -o osv.sha256
+          grep osv-scanner_linux_amd64 osv.sha256 | sha256sum -c -
+          chmod +x osv-scanner
+          ./osv-scanner scan --format=sarif --output=osv.sarif . || true
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@fd7b0b123a4a76406f8bc0ca84ea3b5d5fde7e40 # v3
+        with:
+          sarif_file: osv.sarif
+      - name: Gate on findings
+        run: |
+          set +e
+          ./osv-scanner scan --format=json --output=osv.json . >/dev/null 2>&1
+          python3 - <<'PY'
+          import json, sys
+          doc = json.load(open("osv.json"))
+          n = sum(len(r.get("vulnerabilities", [])) for r in doc.get("results", []) or [])
+          print(f"OSV vulnerabilities: {n}")
+          sys.exit(1 if n else 0)
+          PY
+
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - uses: rhysd/actionlint@e7d448ef7507c20fc4c88a7d7466d343f7052663 # v1.7.8, SHA-pinned
+
+  scorecard:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - uses: ossf/scorecard-action@05b42c624433fc40578a4040d5cf5e36dd650f33 # v2.4
+        with:
+          results_format: sarif
+          results_file: scorecard.sarif
+      - uses: github/codeql-action/upload-sarif@fd7b0b123a4a76406f8bc0ca84ea3b5d5fde7e40 # v3
+        with:
+          sarif_file: scorecard.sarif
