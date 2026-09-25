@@ -70,29 +70,6 @@ class TestConfidenceGate:
             == IntentType.EXPLANATION
         )
 
-    def test_modify_needs_wider_margin(self):
-        """Dogfood 2026-09-25: 'it's broken, make it work' reached
-        code_modification at margin 0.103. Writing intents need 0.12."""
-        vague = System1Decision(
-            intent=IntentType.CODE_MODIFICATION, confidence=0.586, margin=0.103,
-            micro_instruction="x", requires_s2=True,
-        )
-        assert enforce_confidence_gate(vague, 0.85).intent == IntentType.UNCLEAR_ESCALATE
-        assert enforce_confidence_gate(vague, 0.85).requires_s2 is False
-
-        clear = System1Decision(
-            intent=IntentType.CODE_MODIFICATION, confidence=0.522, margin=0.148,
-            micro_instruction="x", requires_s2=True,
-        )
-        assert enforce_confidence_gate(clear, 0.85).requires_s2 is True
-
-        readonly = System1Decision(
-            intent=IntentType.EXPLANATION, confidence=0.4, margin=0.08,
-            micro_instruction="x", requires_s2=False,
-        )
-        # narrow floor (0.04) still routes cheap read-only intents
-        assert enforce_confidence_gate(readonly, 0.85).intent == IntentType.EXPLANATION
-
     def test_deliberate_engine_escalation_is_respected(self):
         decision = System1Decision(
             intent=IntentType.UNCLEAR_ESCALATE,
@@ -101,6 +78,61 @@ class TestConfidenceGate:
             requires_s2=False,
         )
         assert enforce_confidence_gate(decision, 0.85).intent == IntentType.UNCLEAR_ESCALATE
+
+
+class TestVagueTargetRule:
+    """Day-2 dogfood rule: modify intent without any pinned path or
+    confident file noul escalates deterministically (nouls can't separate
+    vague from clear; prompt-structure can)."""
+
+    def _engine_with(self, answers: dict):
+        from janus.system1.laya_engine import LayaDecisionEngine
+
+        class StubAgent:
+            def predict(self, state, questions):
+                return {"answers": answers}
+
+        settings = JanusSettings(s1_backend="laya")
+        engine = LayaDecisionEngine.__new__(LayaDecisionEngine)
+        engine._settings = settings
+        engine._agent = StubAgent()
+        return engine
+
+    def _modify_answers(self, margin_gap: float = 0.5) -> dict:
+        return {
+            "intent:code_modification": {"noul": 0.55},
+            "intent:explanation": {"noul": 0.55 - margin_gap},
+            "intent:direct_action": {"noul": 0.2},
+            "intent:unclear_escalate": {"noul": 0.1},
+            "file:mod.py": {"noul": 0.1},
+        }
+
+    def test_vague_unpinned_escalates(self):
+        engine = self._engine_with(self._modify_answers())
+        d = engine.evaluate("it's broken, make it work", "mod.py def add(a, b)")
+        assert d.intent == IntentType.UNCLEAR_ESCALATE
+        assert d.requires_s2 is False
+
+    def test_pinned_prompt_still_routes(self):
+        engine = self._engine_with(self._modify_answers())
+        d = engine.evaluate("fix the bug in mod.py", "mod.py def add(a, b)")
+        assert d.intent == IntentType.CODE_MODIFICATION
+
+    def test_confident_file_noul_without_anchor_still_escalates(self):
+        """Day-2 evidence: nouls spike on vague asks; anchors only."""
+        answers = self._modify_answers()
+        answers["file:mod.py"] = {"noul": 0.72}
+        engine = self._engine_with(answers)
+        d = engine.evaluate("make the thing work", "mod.py def add(a, b)")
+        assert d.intent == IntentType.UNCLEAR_ESCALATE
+        assert d.requires_s2 is False
+
+    def test_symbol_anchor_pins_file_routes(self):
+        engine = self._engine_with(self._modify_answers())
+        d = engine.evaluate("fix add's subtraction", "mod.py def add(a, b)")
+        assert d.intent == IntentType.CODE_MODIFICATION
+        assert d.target_symbols == ["add"]
+        assert d.target_files == ["mod.py"]
 
 
 class TestMockRouting:
