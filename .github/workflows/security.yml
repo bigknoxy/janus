@@ -40,11 +40,10 @@ jobs:
       - name: Install + run OSV-Scanner
         run: |
           OSV_VERSION=v2.6.0
-          curl -fsSL -o osv-scanner "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64"
+          curl -fsSL -o osv-scanner_linux_amd64 "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64"
           curl -fsSL -o osv.sha256 "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_SHA256SUMS"
-          grep "osv-scanner_linux_amd64" osv.sha256 \
-            | sed -E 's|^([a-f0-9]+) +\./?osv-scanner_linux_amd64.*$|\1  osv-scanner|' \
-            | sha256sum -c -
+          grep "osv-scanner_linux_amd64" osv.sha256 | sha256sum -c -
+          cp osv-scanner_linux_amd64 osv-scanner
           chmod +x osv-scanner
           ./osv-scanner scan --format=sarif --output=osv.sarif . || true
       - name: Upload SARIF
