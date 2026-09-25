@@ -42,6 +42,7 @@ jobs:
           curl -LsSf https://astral.sh/uv/0.9.5/install.sh | sh
           export PATH="$HOME/.local/bin:$PATH"
           uv lock
+          uv export --no-hashes --no-emit-project -o requirements-ci.txt
       - name: Install + run OSV-Scanner
         run: |
           OSV_VERSION=v2.6.0
@@ -50,7 +51,7 @@ jobs:
           grep "osv-scanner_linux_amd64" osv.sha256 | sha256sum -c -
           cp osv-scanner_linux_amd64 osv-scanner
           chmod +x osv-scanner
-          ./osv-scanner scan --lockfile=uv.lock --format=sarif --output=osv.sarif . || true
+          ./osv-scanner scan --lockfile=requirements-ci.txt --format=sarif --output=osv.sarif . || true
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@87ef0dc97def48aa960fbf026a2563ee9dbdb470 # v3 (87ef0dc)
         with:
@@ -58,7 +59,7 @@ jobs:
       - name: Gate on findings
         run: |
           set +e
-          ./osv-scanner scan --lockfile=uv.lock --format=json --output=osv.json . >/dev/null 2>&1
+          ./osv-scanner scan --lockfile=requirements-ci.txt --format=json --output=osv.json . >/dev/null 2>&1
           python3 - <<'PY'
           import json, sys
           doc = json.load(open("osv.json"))
