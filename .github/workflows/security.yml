@@ -46,7 +46,7 @@ jobs:
           chmod +x osv-scanner
           ./osv-scanner scan --format=sarif --output=osv.sarif . || true
       - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@fd7b0b123a4a76406f8bc0ca84ea3b5d5fde7e40 # v3
+        uses: github/codeql-action/upload-sarif@87ef0dc97def48aa960fbf026a2563ee9dbdb470 # v3 (87ef0dc)
         with:
           sarif_file: osv.sarif
       - name: Gate on findings
@@ -65,7 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-      - uses: rhysd/actionlint@e7d448ef7507c20fc4c88a7d7466d343f7052663 # v1.7.8, SHA-pinned
+      - uses: rhysd/actionlint@a443f344ff32813837fa49f7aa6cbc478d770e62 # v1.7.9, SHA-pinned
 
   scorecard:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -75,10 +75,10 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-      - uses: ossf/scorecard-action@05b42c624433fc40578a4040d5cf5e36dd650f33 # v2.4
+      - uses: ossf/scorecard-action@f2ea147fec3c2f0d459703eba7405b5e9bcd8c8f # v2.4.2
         with:
           results_format: sarif
           results_file: scorecard.sarif
-      - uses: github/codeql-action/upload-sarif@fd7b0b123a4a76406f8bc0ca84ea3b5d5fde7e40 # v3
+      - uses: github/codeql-action/upload-sarif@87ef0dc97def48aa960fbf026a2563ee9dbdb470 # v3 (87ef0dc)
         with:
           sarif_file: scorecard.sarif
