@@ -1,0 +1,91 @@
+name: Security
+
+# Mirrors the house convention (bigknoxy/HashPilot security.yml):
+# CodeQL + Gitleaks run via the org-wide reusable workflow; this file adds
+# OSV-Scanner (dependency CVEs across manifests) and actionlint (workflow
+# syntax). All third-party actions are SHA-pinned.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'   # weekly CVE re-scan even on a quiet repo
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
+jobs:
+  security:
+    uses: bigknoxy/.github/.github/workflows/security-reusable.yml@main
+    permissions:
+      contents: read
+      security-events: write   # SARIF upload (CodeQL)
+      pull-requests: write     # dependency-review PR comment
+    with:
+      language: python
+      has_docker: false
+    secrets: inherit
+
+  osv-scanner:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - name: Lock dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/0.9.5/install.sh | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          uv lock
+          uv export --no-hashes --no-emit-project -o requirements-ci.txt
+      - name: Install + run OSV-Scanner
+        run: |
+          OSV_VERSION=v2.6.0
+          curl -fsSL -o osv-scanner_linux_amd64 "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64"
+          curl -fsSL -o osv.sha256 "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_SHA256SUMS"
+          grep "osv-scanner_linux_amd64" osv.sha256 | sha256sum -c -
+          cp osv-scanner_linux_amd64 osv-scanner
+          chmod +x osv-scanner
+          ./osv-scanner scan --lockfile=requirements-ci.txt --format=sarif --output=osv.sarif . || true
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@87ef0dc97def48aa960fbf026a2563ee9dbdb470 # v3 (87ef0dc)
+        with:
+          sarif_file: osv.sarif
+      - name: Gate on findings
+        run: |
+          set +e
+          ./osv-scanner scan --lockfile=requirements-ci.txt --format=json --output=osv.json . >/dev/null 2>&1
+          python3 - <<'PY'
+          import json, sys
+          doc = json.load(open("osv.json"))
+          n = sum(len(r.get("vulnerabilities", [])) for r in doc.get("results", []) or [])
+          print(f"OSV vulnerabilities: {n}")
+          sys.exit(1 if n else 0)
+          PY
+
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - uses: rhysd/actionlint@a443f344ff32813837fa49f7aa6cbc478d770e62 # v1.7.9, SHA-pinned
+
+  scorecard:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - uses: ossf/scorecard-action@f2ea147fec3c2f0d459703eba7405b5e9bcd8c8f # v2.4.2
+        with:
+          results_format: sarif
+          results_file: scorecard.sarif
+      - uses: github/codeql-action/upload-sarif@87ef0dc97def48aa960fbf026a2563ee9dbdb470 # v3 (87ef0dc)
+        with:
+          sarif_file: scorecard.sarif
