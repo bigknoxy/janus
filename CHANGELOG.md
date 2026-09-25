@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/bigknoxy/janus/compare/v0.3.0...v0.4.0) (2026-09-25)
+
+
+### Features
+
+* dogfood check-in pushes to Telegram ([#8](https://github.com/bigknoxy/janus/issues/8)) ([de4b3c4](https://github.com/bigknoxy/janus/commit/de4b3c469059c5c1bb7799f1b40b60c6d92dae2b))
+
+
+### Bug Fixes
+
+* asymmetric gate floors ([#10](https://github.com/bigknoxy/janus/issues/10)) ([547a0f0](https://github.com/bigknoxy/janus/commit/547a0f0f048b1a0e1975cbc7c2b0545315ee7aaf))
+
 ## [0.3.0](https://github.com/bigknoxy/janus/compare/v0.2.0...v0.3.0) (2026-09-25)
 
 
