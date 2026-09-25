@@ -70,6 +70,29 @@ class TestConfidenceGate:
             == IntentType.EXPLANATION
         )
 
+    def test_modify_needs_wider_margin(self):
+        """Dogfood 2026-09-25: 'it's broken, make it work' reached
+        code_modification at margin 0.103. Writing intents need 0.12."""
+        vague = System1Decision(
+            intent=IntentType.CODE_MODIFICATION, confidence=0.586, margin=0.103,
+            micro_instruction="x", requires_s2=True,
+        )
+        assert enforce_confidence_gate(vague, 0.85).intent == IntentType.UNCLEAR_ESCALATE
+        assert enforce_confidence_gate(vague, 0.85).requires_s2 is False
+
+        clear = System1Decision(
+            intent=IntentType.CODE_MODIFICATION, confidence=0.522, margin=0.148,
+            micro_instruction="x", requires_s2=True,
+        )
+        assert enforce_confidence_gate(clear, 0.85).requires_s2 is True
+
+        readonly = System1Decision(
+            intent=IntentType.EXPLANATION, confidence=0.4, margin=0.08,
+            micro_instruction="x", requires_s2=False,
+        )
+        # narrow floor (0.04) still routes cheap read-only intents
+        assert enforce_confidence_gate(readonly, 0.85).intent == IntentType.EXPLANATION
+
     def test_deliberate_engine_escalation_is_respected(self):
         decision = System1Decision(
             intent=IntentType.UNCLEAR_ESCALATE,

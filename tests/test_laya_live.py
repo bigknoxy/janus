@@ -28,7 +28,12 @@ REPO = "calc.py def calculate_tax(amount, rate)\napp/order.py class Order\nREADM
 # per-prompt routing is claimed only where the model separates cleanly.
 PROBES = [
     ("fix the tax calculation bug in calc.py", {IntentType.CODE_MODIFICATION}),
-    ("add type hints to the parser module", {IntentType.CODE_MODIFICATION}),
+    # narrow-margin modify (0.045 live) — correctly escalates under the
+    # widen-0.12 floor; routing OR escalation both safe, never wrong file write
+    (
+        "add type hints to the parser module",
+        {IntentType.CODE_MODIFICATION, IntentType.UNCLEAR_ESCALATE},
+    ),
     ("explain how patches are applied", {IntentType.EXPLANATION}),
     (
         "what does the Order class do?",  # near-homophone of an action ask,

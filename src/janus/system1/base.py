@@ -20,20 +20,30 @@ class DecisionEngineProtocol(Protocol):
 
 
 def enforce_confidence_gate(
-    decision: System1Decision, threshold: float, margin_floor: float = 0.20
+    decision: System1Decision,
+    threshold: float,
+    margin_floor: float = 0.04,
+    modify_margin_floor: float = 0.12,
 ) -> System1Decision:
-    """Single home for the escalation rule (DRY).
+    """Single home for the escalation rule (DRY), asymmetric by risk:
 
-    When the engine reports a margin (top1 - top2 probability gap), the
-    margin governs: diffuse/ambiguous routing escalates, confident routing
-    proceeds. Engines without margins (mock, legacy) fall back to the
-    absolute-confidence threshold. Engines that deliberately escalate are
-    always respected.
+    - File-writing intents need a wider margin (`modify_margin_floor`) —
+      vague nouls cluster near 0.5 with margins around 0.10 on genuinely
+      ambiguous prompts (dogfood 2026-09-25 caught one: "it's broken,
+      make it work" routed to modify at margin 0.103).
+    - Read-only / direct intents escalate only on near-ties.
+    - Margin-less engines (mock) fall back to the absolute threshold.
+    - Engines that deliberately escalate are always respected.
     """
     if decision.intent == IntentType.UNCLEAR_ESCALATE:
-        return decision  # engine deliberately escalated; respect it
+        return decision
     if decision.margin is not None:
-        ambiguous = decision.margin < margin_floor
+        floor = (
+            modify_margin_floor
+            if decision.intent == IntentType.CODE_MODIFICATION
+            else margin_floor
+        )
+        ambiguous = decision.margin < floor
     else:
         ambiguous = decision.confidence < threshold
     if not ambiguous:
