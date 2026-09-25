@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/bigknoxy/janus/compare/v0.4.0...v0.4.1) (2026-09-25)
+
+
+### Bug Fixes
+
+* anchor rule for vague prompts ([#11](https://github.com/bigknoxy/janus/issues/11)) ([97c2da9](https://github.com/bigknoxy/janus/commit/97c2da9f5b87896b1c322d0925dabaeb453c6dd7))
+
 ## [0.4.0](https://github.com/bigknoxy/janus/compare/v0.3.0...v0.4.0) (2026-09-25)
 
 
