@@ -78,6 +78,9 @@ class _ForceModify:
         )
 
 
+_S1_CACHE: dict[str, object] = {}
+
+
 def run_fixture(fixture: dict, mode: str, settings: JanusSettings, python: str) -> dict:
     with tempfile.TemporaryDirectory() as d:
         root = Path(d)
@@ -94,17 +97,14 @@ def run_fixture(fixture: dict, mode: str, settings: JanusSettings, python: str) 
                 "max_repair_attempts": 0 if mode == "no-repair" else settings.max_repair_attempts,
             }
         )
-        s1 = (
-            _ForceModify(fixture)
-            if mode == "no-gate"
-            else MockDecisionEngine(settings=run_settings)
-            if run_settings.s1_backend == "mock"
-            else None
-        )
-        if s1 is None:
+        if mode == "no-gate":
+            s1 = _ForceModify(fixture)
+        elif run_settings.s1_backend == "mock":
+            s1 = _S1_CACHE.setdefault("mock", MockDecisionEngine(settings=run_settings))
+        else:
             from janus.system1.laya_engine import LayaDecisionEngine
 
-            s1 = LayaDecisionEngine(run_settings)
+            s1 = _S1_CACHE.setdefault("laya", LayaDecisionEngine(run_settings))
 
         orch = PipelineOrchestrator(
             s1=s1,
@@ -128,13 +128,13 @@ def run_fixture(fixture: dict, mode: str, settings: JanusSettings, python: str) 
 
         expect = fixture.get("expect")
         if expect == "ESCALATE_OR_READONLY":
-            # Gate fixture: success = no generation spend, no file change.
-            if report.status in (RunStatus.ESCALATE, RunStatus.READ_ONLY) and not changed:
-                outcome = "PASSED"
-            elif changed:
-                outcome = "WRONG-INTENT"  # gate failed to hold the line
-            else:
+            # Gate fixture: success = no files touched, no verified patch.
+            # DIRECT_ACTION is a no-op in v0 (report-only), so it is safe
+            # and passes; only a write/verified-patch is a gate failure.
+            if changed or report.status == RunStatus.PATCHED_VERIFIED:
                 outcome = "WRONG-INTENT"
+            else:
+                outcome = "PASSED"
         elif report.status == RunStatus.PATCHED_VERIFIED and green and changed:
             outcome = "PASSED"
         elif report.status == RunStatus.FAILED_ROLLED_BACK and not changed:

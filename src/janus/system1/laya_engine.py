@@ -107,12 +107,26 @@ class LayaDecisionEngine:
                 if key.startswith("file:") and ans.get("noul", 0.0) >= 0.6
             ][:3]
 
+        # Dogfood 2026-09-25: vague prompts hedge all nouls near 0.5 with
+        # margins that overlap clear prompts — no probability gate separates
+        # them, and file-relevance nouls also spike on vague asks. Rule:
+        # a write request with NO literal anchor (no path, no symbol name
+        # from the repo map) escalates deterministically.
+        # Rerun evidence day-2: 'it's broken, make it work' assigned noul
+        # 0.72 to mod.py and patched it — anchors only, never nouls alone.
+        symbol_pins = _mentioned_repo_symbols(user_prompt, repo_summary)
+        if intent == IntentType.CODE_MODIFICATION and not (pinned or symbol_pins):
+            intent = IntentType.UNCLEAR_ESCALATE
+        if symbol_pins and intent == IntentType.CODE_MODIFICATION:
+            extra_files = _files_for_symbols(symbol_pins, repo_summary)
+            target_files = list(dict.fromkeys(pinned + extra_files + target_files))[:3]
+
         decision = System1Decision(
             intent=intent,
             confidence=confidence,
             margin=margin,
             target_files=target_files,
-            target_symbols=[],  # symbol-level narrowing is orchestrator+pruner work
+            target_symbols=symbol_pins,
             micro_instruction=" ".join(user_prompt.split()),
             requires_s2=intent == IntentType.CODE_MODIFICATION,
         )
@@ -120,8 +134,38 @@ class LayaDecisionEngine:
             decision,
             self._settings.confidence_threshold,
             margin_floor=getattr(self._settings, "s1_margin_floor", DEFAULT_MARGIN_FLOOR),
-            modify_margin_floor=getattr(self._settings, "s1_modify_margin_floor", 0.12),
+            modify_margin_floor=getattr(self._settings, "s1_modify_margin_floor", 0.04),
         )
+
+
+_SYMBOL_DEF = None
+
+
+def _mentioned_repo_symbols(prompt: str, repo_summary: str) -> list[str]:
+    """Symbols defined in the repo map that are named verbatim in the
+    prompt (word-boundary). The deterministic second anchor besides paths."""
+    import re
+
+    pinned: list[str] = []
+    for line in repo_summary.splitlines():
+        for m in re.finditer(r"\b(?:def|class|function)\s+([A-Za-z_]\w*)", line):
+            name = m.group(1)
+            if len(name) >= 3 and re.search(rf"(?<![\w]){re.escape(name)}(?![\w])", prompt):
+                pinned.append(name)
+    return pinned
+
+
+def _files_for_symbols(symbols: list[str], repo_summary: str) -> list[str]:
+    """Files whose repo_map line declares one of the pinned symbols."""
+    files: list[str] = []
+    for line in repo_summary.splitlines():
+        token = line.strip().split(" ", 1)[0]
+        if any(
+            f"def {s}(" in line or f"class {s}" in line or f"function {s}" in line
+            for s in symbols
+        ):
+            files.append(token)
+    return files
 
 
 def _candidate_files(repo_summary: str) -> dict[str, str]:

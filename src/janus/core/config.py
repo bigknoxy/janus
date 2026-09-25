@@ -35,10 +35,10 @@ class JanusSettings(BaseSettings):
         description="Top1-top2 gap below which read-only/direct intents escalate",
     )
     s1_modify_margin_floor: float = Field(
-        default=0.12,
+        default=0.04,
         ge=0.0,
         le=0.5,
-        description="Wider margin required before writing files (dogfood 2026-09-25)",
+        description="Modify intents share the base floor; vague-target rule carries safety",
     )
 
     # --- System 2 (local LLM, OpenAI-compatible) ---
