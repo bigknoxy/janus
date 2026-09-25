@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/bigknoxy/janus/compare/v0.1.0...v0.2.0) (2026-09-25)
+
+
+### Features
+
+* tier-3 AST patch application + real-issue eval corpus ([#2](https://github.com/bigknoxy/janus/issues/2)) ([2a01903](https://github.com/bigknoxy/janus/commit/2a01903b86b6d61ec834f9beb5327a9c7581641e))
+
 ## 0.1.0 (2026-09-24)
 
 
