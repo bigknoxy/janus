@@ -39,10 +39,10 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
       - name: Install + run OSV-Scanner
         run: |
-          OSV_VERSION=v1.9.2
+          OSV_VERSION=v2.6.0
           curl -fsSL -o osv-scanner "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64"
-          curl -fsSL "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64.sha256" -o osv.sha256
-          grep osv-scanner_linux_amd64 osv.sha256 | sha256sum -c -
+          curl -fsSL -o osv.sha256 "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_SHA256SUMS"
+          grep "osv-scanner_linux_amd64$" osv.sha256 | sha256sum -c -
           chmod +x osv-scanner
           ./osv-scanner scan --format=sarif --output=osv.sarif . || true
       - name: Upload SARIF
