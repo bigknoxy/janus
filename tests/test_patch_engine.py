@@ -96,7 +96,7 @@ class TestEngineExact:
 
     def test_not_found_rejected(self):
         patch = PatchBlock(file_path="f", search_block="nope", replace_block="y")
-        with pytest.raises(PatchApplicationError, match="not found"):
+        with pytest.raises(PatchApplicationError, match="not found|AST anchor"):
             apply_patch("real content\n", patch)
 
     def test_empty_search_rejected(self):
@@ -120,6 +120,43 @@ class TestEngineNormalized:
         patch = PatchBlock(file_path="f", search_block="pass", replace_block="...")
         with pytest.raises(PatchApplicationError, match="ambiguous"):
             apply_patch(content, patch)
+
+
+class TestASTAnchored:
+    """Tier 3: when text matching fails, anchor by the shared symbol's AST
+    span (information the pruner already knows; free, deterministic)."""
+
+    def test_indent_mangled_search_recovers_by_span(self):
+        content = "def render(row):\n    out = []\n\n    return row.upper()\n"
+        patch = PatchBlock(
+            file_path="mod.py",
+            search_block="def render(row):\nreturn row.upper()",  # lost indents
+            replace_block="def render(row):\n    return row.title()",
+        )
+        # Tier 2 fails (window mismatch), tier 3 replaces the whole def span.
+        out = apply_patch(content, patch)
+        assert out == "def render(row):\n    return row.title()\n"
+        # span replacement replaces the WHOLE symbol — dead lines die with it
+
+    def test_anchor_requires_shared_symbol(self):
+        content = "def a():\n    return 1\n"
+        patch = PatchBlock(
+            file_path="mod.py",
+            search_block="def unmatched_\nxyz",
+            replace_block="def b():\n    return 2",
+        )
+        with pytest.raises(PatchApplicationError):
+            apply_patch(content, patch)
+
+    def test_anchor_respects_class_scoping(self):
+        content = "class A:\n    def m(self):\n        return 1\n\ndef m():\n    return 'outer'\n"
+        patch = PatchBlock(
+            file_path="mod.py",
+            search_block="def m(self):\n    return 1",
+            replace_block="def m(self):\n        return 2",
+        )
+        out = apply_patch(content, patch)
+        assert "return 1" not in out.splitlines()[2] and "return 'outer'" in out
 
 
 class TestApplyAll:
