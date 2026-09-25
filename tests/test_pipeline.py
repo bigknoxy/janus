@@ -129,6 +129,38 @@ class TestE2EFixture:
         second_user = calls[1]["messages"][1]["content"]
         assert "PREVIOUS ATTEMPT FAILED" in second_user
 
+    def test_big_file_symbol_targeting(self, project: Path):
+        """#3: files beyond the whole-file cutoff slice by prompt-mentioned
+        symbol instead of escalating."""
+        big = (
+            "def parse_rate(s):\n"
+            "    return float(s)  # BUG: commas crash\n\n"
+            + "\n".join(f"def filler_{i}(x):\n    return x + {i}" for i in range(400))
+        )
+        (project / "pricing.py").write_text(big + "\n")
+        (project / "test_pricing.py").write_text(
+            "from pricing import parse_rate\n\n"
+            "def test_c():\n    assert parse_rate('1,234.5') == 1234.5\n"
+        )
+        patch = (
+            "file: pricing.py\n<<<<<<< SEARCH\n    return float(s)\n"
+            "=======\n    return float(s.replace(',', ''))\n>>>>>>> REPLACE"
+        )
+        settings = JanusSettings(
+            verify_command=f"{sys.executable} -m pytest -q test_pricing.py"
+        )
+        orch = PipelineOrchestrator(
+            s1=MockDecisionEngine(settings=settings),
+            s2=LocalGenerativeEngine(settings=settings, transport=s2_transport_returning(patch)),
+            runner=VerificationRunner(settings),
+            settings=settings,
+        )
+        report = orch.run("fix parse_rate in pricing.py", str(project), "pricing.py")
+        assert report.status == RunStatus.PATCHED_VERIFIED
+        after = (project / "pricing.py").read_text()
+        assert "s.replace(',', '')" in after
+        assert "filler_399" in after  # the rest of the big file untouched
+
     def test_run_forced_matches_old_private_path(self, project: Path):
         """ISC-6: the public escalation-override API executes the same
         modification pipeline as the internal path."""

@@ -105,6 +105,40 @@ def extract_symbol(source: str, symbol: str, language: str = "python") -> str | 
     return _node_text(source, node)
 
 
+def symbol_names(source: str, language: str = "python") -> list[str]:
+    """All function/class names defined in source (deduped, stable order)."""
+    if language not in _PARSERS:
+        return []
+    spec = _SPECS[language]
+    root = _parse(source, language)
+    names: list[str] = []
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        cand = _unwrap(spec, node)
+        if cand.type in spec.symbol_kinds and spec.is_symbol(cand):
+            nm = cand.child_by_field_name("name")
+            if nm is not None:
+                name = _node_text(source, nm)
+                if name not in names:
+                    names.append(name)
+        stack.extend(node.children)
+    return names
+
+
+def mentioned_symbols(prompt: str, source: str, language: str = "python") -> list[str]:
+    """Symbols defined in `source` that are named verbatim in the prompt.
+
+    Word-boundary match — 'tax' must not pin 'tax_rate'."""
+    import re
+
+    return [
+        n
+        for n in symbol_names(source, language)
+        if re.search(rf"(?<![\w]){re.escape(n)}(?![\w])", prompt)
+    ]
+
+
 def skeleton(source: str, language: str = "python") -> str:
     """Signature-only rendering: every top-level symbol body -> `...`.
 

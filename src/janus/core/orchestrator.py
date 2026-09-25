@@ -15,7 +15,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from janus.context.ast_pruner import extract_symbol
+from janus.context.ast_pruner import extract_symbol, mentioned_symbols
 from janus.core.config import JanusSettings
 from janus.core.types import (
     IntentType,
@@ -204,16 +204,24 @@ class PipelineOrchestrator:
                 raise  # traversal must not silently become "no slices"
             except (OSError, UnicodeDecodeError):
                 continue
-            if decision.target_symbols:
-                for symbol in decision.target_symbols:
-                    slice_ = extract_symbol(source, symbol)
+            symbols = decision.target_symbols
+            if not symbols:
+                # Deterministic symbol targeting: prompt mentions a symbol
+                # named verbatim in the file -> slice it (works in mock too).
+                lang = "javascript" if rel.endswith((".js", ".mjs", ".ts")) else "python"
+                symbols = mentioned_symbols(decision.micro_instruction, source, lang)
+            if symbols:
+                for symbol in symbols:
+                    slice_ = extract_symbol(
+                        source,
+                        symbol,
+                        language="javascript" if rel.endswith((".js", ".mjs", ".ts")) else "python",
+                    )
                     if slice_ is not None:
                         slices[rel] = slice_
-            else:
-                # No symbol named: whole-file slice only for small files;
-                # large files need a symbol — escalate instead.
-                if len(source) < 12_000:
-                    slices[rel] = source
+            elif len(source) < 12_000:
+                # Small file: whole-file slice is the honest context.
+                slices[rel] = source
         return slices
 
     def _apply_and_write(
