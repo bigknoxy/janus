@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/bigknoxy/janus/compare/v0.2.0...v0.3.0) (2026-09-25)
+
+
+### Features
+
+* symbol targeting for large files ([#5](https://github.com/bigknoxy/janus/issues/5)) ([4863561](https://github.com/bigknoxy/janus/commit/48635615c026c9bc87ec3a411dce3bc9cc4ceb5e))
+
 ## [0.2.0](https://github.com/bigknoxy/janus/compare/v0.1.0...v0.2.0) (2026-09-25)
 
 
