@@ -120,6 +120,7 @@ class LayaDecisionEngine:
             decision,
             self._settings.confidence_threshold,
             margin_floor=getattr(self._settings, "s1_margin_floor", DEFAULT_MARGIN_FLOOR),
+            modify_margin_floor=getattr(self._settings, "s1_modify_margin_floor", 0.12),
         )
 
 
