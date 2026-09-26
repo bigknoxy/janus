@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/bigknoxy/janus/compare/v0.5.1...v0.6.0) (2026-09-26)
+
+
+### Features
+
+* adversarial corpus tier ([#19](https://github.com/bigknoxy/janus/issues/19)) ([c71c516](https://github.com/bigknoxy/janus/commit/c71c51651063e40b2594357a1195e57f765acae2))
+
 ## [0.5.1](https://github.com/bigknoxy/janus/compare/v0.5.0...v0.5.1) (2026-09-26)
 
 
