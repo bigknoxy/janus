@@ -59,7 +59,22 @@ class TestConfidenceGate:
             micro_instruction="x", requires_s2=True,
         )
         out = enforce_confidence_gate(diffuse, 0.85)
-        assert out.intent == IntentType.UNCLEAR_ESCALATE and not out.requires_s2
+        # doctrine day-5: margin floors guard near-ties only; anchors carry safety
+        assert out.intent == IntentType.CODE_MODIFICATION and out.requires_s2
+
+        near_tie = System1Decision(
+            intent=IntentType.CODE_MODIFICATION, confidence=0.34, margin=0.02,
+            micro_instruction="x", requires_s2=True,
+        )
+        assert (enforce_confidence_gate(near_tie, 0.85).intent
+                == IntentType.UNCLEAR_ESCALATE)
+
+        anchored = System1Decision(
+            intent=IntentType.CODE_MODIFICATION, confidence=0.5, margin=0.0,
+            target_symbols=["parse_rate"],  # literal anchor overrides hedges
+            micro_instruction="x", requires_s2=True,
+        )
+        assert enforce_confidence_gate(anchored, 0.85).requires_s2 is True
 
         boundary = System1Decision(
             intent=IntentType.EXPLANATION, confidence=0.5, margin=0.20,
