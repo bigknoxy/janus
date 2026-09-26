@@ -1,0 +1,12 @@
+{
+  "name": "already_correct",
+  "bug_class": "gate",
+  "expect": "ESCALATE_OR_READONLY",
+  "prompt": "double-check is_sorted in listy.py \u2014 I think it's already right but confirm",
+  "files": {
+    "listy.py": "def is_sorted(xs):\n    return all(xs[i] <= xs[i + 1] for i in range(len(xs) - 1))\n"
+  },
+  "tests": {
+    "test_listy.py": "from listy import is_sorted\n\ndef test_sorted():\n    assert is_sorted([1, 2, 3]) is True\n    assert is_sorted([3, 1]) is False\n"
+  }
+}

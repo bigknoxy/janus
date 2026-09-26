@@ -89,7 +89,11 @@ def run_fixture(fixture: dict, mode: str, settings: JanusSettings, python: str) 
         before = {p: (root / p).read_text() for p in fixture["files"]}
 
         if not _tests_red(root, python, verify or ""):
-            return {"fixture": fixture["name"], "mode": mode, "outcome": "BAD-FIXTURE"}
+            # gate-expect fixtures (e.g. already_correct) are green by design
+            if fixture.get("expect"):
+                pass
+            else:
+                return {"fixture": fixture["name"], "mode": mode, "outcome": "BAD-FIXTURE"}
 
         run_settings = settings.model_copy(
             update={

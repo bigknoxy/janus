@@ -1,0 +1,11 @@
+{
+  "name": "multi_symbol_two_defs",
+  "bug_class": "multi-symbol",
+  "prompt": "fix both add_one and add_two in inc.py \u2014 both add the wrong amount",
+  "files": {
+    "inc.py": "def add_one(x):\n    return x + 2  # BUG\n\ndef add_two(x):\n    return x + 1  # BUG\n"
+  },
+  "tests": {
+    "test_inc.py": "from inc import add_one, add_two\n\ndef test_both():\n    assert add_one(1) == 2\n    assert add_two(1) == 3\n"
+  }
+}
