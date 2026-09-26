@@ -178,6 +178,18 @@ def summarize(rows: list[dict]) -> str:
     return "\n".join(out)
 
 
+def _s2_healthy(settings: JanusSettings) -> bool:
+    """Pre-flight: refuse to score against a down endpoint — that pollutes
+    the ledger with fake SAFE-FAILs (day-8 run, laptop bounce)."""
+    import httpx
+
+    try:
+        r = httpx.get(f"{settings.s2_base_url.rstrip('/')}/models", timeout=5.0)
+        return r.status_code == 200
+    except Exception:
+        return False
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", action="append", choices=MODES, dest="modes")
@@ -197,6 +209,9 @@ def main() -> int:
         return 2
 
     settings = JanusSettings()
+    if not _s2_healthy(settings):
+        print("S2 endpoint unreachable — aborting (no fake matrix)", file=sys.stderr)
+        return 5
     python = sys.executable
     rows: list[dict] = []
     for mode in modes:
