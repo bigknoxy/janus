@@ -128,11 +128,12 @@ def main() -> None:
             continue
         if not validate(mined["files"], mined["test_files"]):
             continue
-        fx = {
+        file_names = ", ".join(Path(f).name for f in src_files)
+    fx = {
             "name": f"history_{sha[:7]}",
             "bug_class": "real-history",
             "origin": f"janus commit {sha[:7]} ({subject[:66]})",
-            "prompt": subject,
+            "prompt": f"{subject} (target files: {file_names})",
             "files": mined["files"],
             "tests": mined["test_files"],
         }
