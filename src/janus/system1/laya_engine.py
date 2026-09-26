@@ -68,7 +68,12 @@ class LayaDecisionEngine:
         # prompt is the dominant signal and needs no model call. (Live
         # probe 2026-09-24: relevance nouls saturate near 0.5 for all
         # files — noise, not signal.)
-        pinned = [p for p in candidates if p in user_prompt]
+        prompt_norm = " ".join(user_prompt.split())
+        pinned = [
+            p
+            for p in candidates
+            if p in prompt_norm or ("/" in p and p.split("/")[-1] in prompt_norm)
+        ]
         if not pinned:
             for path in candidates:
                 questions[f"file:{path}"] = file_relevance_question(
