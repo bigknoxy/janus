@@ -79,4 +79,3 @@ forward. One face judges what must happen; the other writes what will.
 Every ending here is verified; every beginning is earned.
 
 Apache-2.0.
-<!-- probe -->
