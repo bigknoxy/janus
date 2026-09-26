@@ -48,7 +48,8 @@ def commits(repo: Path, since: str | None) -> list[tuple[str, str, str]]:
 
 
 def looks_like_fix(subject: str) -> bool:
-    return bool(re.match(r"(?i)^(fix|feat.*safe|feat.*guard|repair)", subject)) or "fix" in subject.lower()
+    head = re.match(r"(?i)^(fix|feat.*safe|feat.*guard|repair)", subject)
+    return bool(head) or "fix" in subject.lower()
 
 
 def mine_commit(repo: Path, sha: str, parent: str) -> dict | None:
@@ -60,7 +61,10 @@ def mine_commit(repo: Path, sha: str, parent: str) -> dict | None:
         status, _, path = line.partition("\t")
         if not path.endswith(".py"):
             continue
-        (test_files if path.startswith("tests/") else src_files if path.startswith("src/") else []).append(path)
+        if path.startswith("tests/"):
+            test_files.append(path)
+        elif path.startswith("src/"):
+            src_files.append(path)
     if not src_files or not test_files or len(src_files) > 2 or len(test_files) > 2:
         return None
 
