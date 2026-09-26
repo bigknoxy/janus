@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/bigknoxy/janus/compare/v0.5.0...v0.5.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* path anchors override margin ([#17](https://github.com/bigknoxy/janus/issues/17)) ([e065688](https://github.com/bigknoxy/janus/commit/e065688c4dc276e27fa8b17448f2daae83260f2b))
+
 ## [0.5.0](https://github.com/bigknoxy/janus/compare/v0.4.2...v0.5.0) (2026-09-26)
 
 
