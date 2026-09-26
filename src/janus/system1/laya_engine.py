@@ -49,7 +49,7 @@ class LayaDecisionEngine:
         if self._settings.s1_subfolder:
             body["model"] = self._settings.s1_subfolder
         try:
-            resp = httpx.post(url, json=body, timeout=120.0)
+            resp = httpx.post(url, json=body, timeout=180.0)
             resp.raise_for_status()
             return resp.json()  # type: ignore[no-any-return]
         except (httpx.HTTPError, ValueError) as e:

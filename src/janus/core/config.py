@@ -49,7 +49,11 @@ class JanusSettings(BaseSettings):
     s2_model: str = "qwen3-4b"
     s2_temperature: float = Field(default=0.0, ge=0.0)
     s2_max_tokens: int = Field(default=2048, gt=0)
-    s2_timeout_s: float = Field(default=300.0, gt=0.0)
+    s2_timeout_s: float = Field(
+        default=480.0,
+        gt=0.0,
+        description="Measured laptop prefill ~155s/12KB prompt on 2 cores; ×3 headroom",
+    )
     s2_log_raw: str = Field(
         default="", description="Path to append raw S2 outputs (falsifier corpus)"
     )
