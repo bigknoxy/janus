@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.8.1](https://github.com/bigknoxy/janus/compare/v0.8.0...v0.8.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* miner prompt anchors + regen ([#30](https://github.com/bigknoxy/janus/issues/30)) ([e2b9196](https://github.com/bigknoxy/janus/commit/e2b919626a166024448f2eadb0d4f19e6c7c665a))
+* miner prompts carry anchors ([#29](https://github.com/bigknoxy/janus/issues/29)) ([23a2a4e](https://github.com/bigknoxy/janus/commit/23a2a4ed673325858c8f52c2d1c865a18da33615))
+* prefill-measured timeouts ([#35](https://github.com/bigknoxy/janus/issues/35)) ([5581e49](https://github.com/bigknoxy/janus/commit/5581e498370401a07e806ab8f889c8b4049b49e2))
+* ruff drift ([#27](https://github.com/bigknoxy/janus/issues/27)) ([4d90575](https://github.com/bigknoxy/janus/commit/4d90575292b4928fd0fd0af1664a615721c08d56))
+
 ## [0.8.0](https://github.com/bigknoxy/janus/compare/v0.7.0...v0.8.0) (2026-09-26)
 
 
