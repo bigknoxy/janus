@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/bigknoxy/janus/compare/v0.7.0...v0.8.0) (2026-09-26)
+
+
+### Features
+
+* git-history benchmark miner ([#25](https://github.com/bigknoxy/janus/issues/25)) ([e850b24](https://github.com/bigknoxy/janus/commit/e850b249dea0f8ad8b9cd10433227896d0334423))
+
 ## [0.7.0](https://github.com/bigknoxy/janus/compare/v0.6.0...v0.7.0) (2026-09-26)
 
 
