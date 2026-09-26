@@ -156,6 +156,34 @@ def run_fixture(fixture: dict, mode: str, settings: JanusSettings, python: str) 
         }
 
 
+def append_ledger(rows: list[dict], repo_root: Path) -> None:
+    """Append one compact row to eval_ledger.json (view-time data for the
+    Pages Ledger). Committed via the daily metrics PR, not every run."""
+    import datetime
+
+    ledger_path = repo_root / "eval_ledger.json"
+    ledger = {"runs": []}
+    if ledger_path.exists():
+        try:
+            ledger = json.loads(ledger_path.read_text())
+        except (OSError, json.JSONDecodeError):
+            ledger = {"runs": []}
+    modes = list(dict.fromkeys(r["mode"] for r in rows))
+    total = len({r["fixture"] for r in rows})
+    row = {
+        "date": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M"),
+        "total": total,
+        "corrupt": sum(r["outcome"] == "CORRUPT" for r in rows),
+    }
+    for m in modes:
+        key = {"full": "full_pass", "no-gate": "nogate_pass", "no-repair": "norepair_pass"}.get(m)
+        if key:
+            row[key] = sum(1 for r in rows if r["mode"] == m and r["outcome"] == "PASSED")
+    ledger["runs"].append(row)
+    ledger["runs"] = ledger["runs"][-60:]
+    ledger_path.write_text(json.dumps(ledger, indent=2) + "\n")
+
+
 def summarize(rows: list[dict]) -> str:
     modes = list(dict.fromkeys(r["mode"] for r in rows))
     out = ["| fixture | " + " | ".join(modes) + " |", "|---|" + "---|" * len(modes)]
@@ -224,6 +252,7 @@ def main() -> int:
                 print(f"[{r['outcome']:>9}] {mode}/{fixture['name']}#{rep} "
                       f"({r.get('seconds', '?')}s)", flush=True)
 
+    append_ledger(rows, Path(__file__).parent.parent)
     md = summarize(rows)
     print("\n" + md)
     if args.md:

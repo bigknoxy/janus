@@ -37,5 +37,34 @@ scp -q "llm-jk:/home/josh/janus/logs/$LATEST" "$TMP/report.md" || {
 }
 
 SUMMARY=$(tail -5 "$TMP/report.md" | tr '\n' ' ' | head -c 400)
-notify "DOGFOOD ($LATEST): $SUMMARY"
+
+# Pull the fine-tune corpus count (laptop-side accumulator)
+FT_COUNT=$(ssh -o ConnectTimeout=10 llm-jk 'cat /home/josh/janus/logs/finetune_count.txt 2>/dev/null || echo 0' 2>/dev/null)
+FT_LINE=""
+[ -n "$FT_COUNT" ] && [ "$FT_COUNT" != "0" ] && FT_LINE=" | finetune corpus: $FT_COUNT decisions"
+
+# Ledger PR: if the laptop's eval_ledger.json differs from ours, open/refresh a PR.
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+LEDGER_PR=""
+if scp -q "llm-jk:/home/josh/janus/eval_ledger.json" "$TMP/ledger.json" 2>/dev/null; then
+  if ! cmp -s "$TMP/ledger.json" "$REPO_ROOT/eval_ledger.json" 2>/dev/null; then
+    cp "$TMP/ledger.json" "$REPO_ROOT/eval_ledger.json"
+    cd "$REPO_ROOT"
+    git fetch -q origin main 2>/dev/null || true
+    git checkout -q main 2>/dev/null || true
+    git checkout -q -B ledger-update 2>/dev/null || true
+    git add eval_ledger.json
+    git -c user.name=janus-bot -c user.email=janus-bot@users.noreply.github.com commit -qm "chore: eval ledger update ($(date -u +%Y-%m-%d))"
+    git push -q -f origin ledger-update 2>/dev/null || true
+    EXISTING=$(gh pr list --head ledger-update --json number --jq '.[0].number' 2>/dev/null)
+    if [ -z "$EXISTING" ]; then
+      PR_URL=$(gh pr create --title "chore: eval ledger update" --body "Auto: nightly dogfood metrics → eval_ledger.json (Pages Ledger reads this at view time)." --base main --head ledger-update 2>/dev/null | tail -1)
+    else
+      PR_URL=$(gh pr view "$EXISTING" --json url --jq .url 2>/dev/null)
+    fi
+    [ -n "$PR_URL" ] && LEDGER_PR=" | ledger PR: $PR_URL"
+  fi
+fi
+
+notify "DOGFOOD ($LATEST): $SUMMARY$FT_LINE$LEDGER_PR"
 echo "dogfood check-in posted (pulse + telegram)"
