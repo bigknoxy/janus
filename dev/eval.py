@@ -42,7 +42,9 @@ MODES = ("full", "no-gate", "no-repair")
 
 def _materialize(fixture: dict, root: Path) -> None:
     for rel, content in {**fixture["files"], **fixture["tests"]}.items():
-        (root / rel).write_text(content, encoding="utf-8")
+        target = root / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
 
 
 def _tests_red(root: Path, python: str, verify: str) -> bool:
