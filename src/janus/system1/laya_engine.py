@@ -126,6 +126,7 @@ class LayaDecisionEngine:
             confidence=confidence,
             margin=margin,
             target_files=target_files,
+            anchored=bool(pinned or symbol_pins),
             target_symbols=symbol_pins,
             micro_instruction=" ".join(user_prompt.split()),
             requires_s2=intent == IntentType.CODE_MODIFICATION,

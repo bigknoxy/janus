@@ -18,6 +18,10 @@ class System1Decision(BaseModel):
 
     intent: IntentType
     confidence: float = Field(..., ge=0.0, le=1.0)
+    anchored: bool = Field(
+        default=False,
+        description="a literal path/symbol mention pinned the target",
+    )
     margin: float | None = Field(
         default=None,
         ge=0.0,

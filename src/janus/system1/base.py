@@ -37,7 +37,7 @@ def enforce_confidence_gate(
     """
     if decision.intent == IntentType.UNCLEAR_ESCALATE:
         return decision
-    if decision.target_symbols:
+    if decision.target_symbols or decision.anchored:
         return decision  # literal anchors override probability hedges (day-5)
     if decision.margin is not None:
         floor = (
