@@ -84,6 +84,8 @@ def mine_commit(repo: Path, sha: str, parent: str) -> dict | None:
     # Support files tests need (marker constants etc.): pull tests/__init__
     init = sh(["git", "show", f"{parent}:tests/__init__.py"], repo)
     files["tests/__init__.py"] = init or ""
+    files["conftest.py"] = ("import sys, pathlib\n"
+                            "sys.path.insert(0, str(pathlib.Path(__file__).parent / 'src'))\n")
     return {"src": src_files, "tests": test_files, "files": files, "test_files": tests}
 
 
@@ -128,12 +130,12 @@ def main() -> None:
             continue
         if not validate(mined["files"], mined["test_files"]):
             continue
-        file_names = ", ".join(Path(f).name for f in src_files)
+        file_names = ", ".join(Path(f).name for f in mined["src"])
         fx = {
             "name": f"history_{sha[:7]}",
             "bug_class": "real-history",
             "origin": f"janus commit {sha[:7]} ({subject[:66]})",
-            "prompt": f"{subject} (target files: {file_names})",
+            "prompt": f"{subject} fix files: {file_names}",
             "files": mined["files"],
             "tests": mined["test_files"],
         }

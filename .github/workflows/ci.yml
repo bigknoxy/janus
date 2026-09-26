@@ -21,8 +21,8 @@ jobs:
       - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6
         with:
           python-version: ${{ matrix.python }}
-      - name: Install
-        run: python -m pip install -e ".[dev]"
+      - name: Install (pinned tooling — version drift broke CI on day 2)
+        run: python -m pip install -e ".[dev]" "ruff==0.16.9"
       - name: Ruff
         run: ruff check src tests dev
       - name: Test (unit + falsifiers + stub e2e; live-Laya suite skips)
