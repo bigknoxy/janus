@@ -37,5 +37,9 @@ if [ "$AVAIL_MB" -lt "${DOGFOOD_MIN_FREE_MB:-2500}" ]; then
 fi
 
 cd "$HERE"
-exec nice -n 19 .venv/bin/python dev/eval.py \
+nice -n 19 .venv/bin/python dev/eval.py \
   --corpus eval_corpus --md "$LOGS/dogfood-$STAMP.md" --json "$LOGS/dogfood-$STAMP.json" "$@"
+code=$?
+# accumulate fine-tuning corpus from the run (cheap, label-rich)
+nice -n 19 .venv/bin/python dev/build_finetune_corpus.py >> "$LOGS/cron.log" 2>&1 || true
+exit $code
