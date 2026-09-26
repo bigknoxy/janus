@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/bigknoxy/janus/compare/v0.4.2...v0.5.0) (2026-09-26)
+
+
+### Features
+
+* literal anchors override margin hedges ([#15](https://github.com/bigknoxy/janus/issues/15)) ([d14f674](https://github.com/bigknoxy/janus/commit/d14f6748129f228445f6e62de33ec0b5e95c4894))
+
 ## [0.4.2](https://github.com/bigknoxy/janus/compare/v0.4.1...v0.4.2) (2026-09-26)
 
 
