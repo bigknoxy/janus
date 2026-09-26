@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/bigknoxy/janus/compare/v0.4.1...v0.4.2) (2026-09-26)
+
+
+### Documentation
+
+* calibration probe falsified ([#13](https://github.com/bigknoxy/janus/issues/13)) ([cfeec09](https://github.com/bigknoxy/janus/commit/cfeec093db9e2a0aeefc408d32bacaa73d1a9dd7))
+
 ## [0.4.1](https://github.com/bigknoxy/janus/compare/v0.4.0...v0.4.1) (2026-09-25)
 
 
