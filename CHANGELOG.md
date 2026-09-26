@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0](https://github.com/bigknoxy/janus/compare/v0.6.0...v0.7.0) (2026-09-26)
+
+
+### Features
+
+* living Ledger + finetune corpus accumulator ([#23](https://github.com/bigknoxy/janus/issues/23)) ([8e43911](https://github.com/bigknoxy/janus/commit/8e43911f44db262e1149bf7c5338236f8d61a3d2))
+
+
+### Bug Fixes
+
+* S2 pre-flight ([#21](https://github.com/bigknoxy/janus/issues/21)) ([5794615](https://github.com/bigknoxy/janus/commit/5794615360bbd8746c826c353a50a9d0e0ffd937))
+
 ## [0.6.0](https://github.com/bigknoxy/janus/compare/v0.5.1...v0.6.0) (2026-09-26)
 
 
