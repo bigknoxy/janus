@@ -23,7 +23,7 @@ def enforce_confidence_gate(
     decision: System1Decision,
     threshold: float,
     margin_floor: float = 0.04,
-    modify_margin_floor: float = 0.12,
+    modify_margin_floor: float = 0.04,
 ) -> System1Decision:
     """Single home for the escalation rule (DRY), asymmetric by risk:
 
@@ -37,6 +37,8 @@ def enforce_confidence_gate(
     """
     if decision.intent == IntentType.UNCLEAR_ESCALATE:
         return decision
+    if decision.target_symbols:
+        return decision  # literal anchors override probability hedges (day-5)
     if decision.margin is not None:
         floor = (
             modify_margin_floor

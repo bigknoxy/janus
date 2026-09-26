@@ -160,6 +160,8 @@ def _files_for_symbols(symbols: list[str], repo_summary: str) -> list[str]:
     files: list[str] = []
     for line in repo_summary.splitlines():
         token = line.strip().split(" ", 1)[0]
+        if "/" not in token and "." not in token:
+            continue  # signature lines (def/class heads) are not files
         if any(
             f"def {s}(" in line or f"class {s}" in line or f"function {s}" in line
             for s in symbols

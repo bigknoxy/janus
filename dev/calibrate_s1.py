@@ -80,8 +80,9 @@ def main() -> None:
         result = engine._agent.predict({"request": prompt, "repository": REPO}, intent_questions())
         scores = {k: float(a["noul"]) for k, a in result["answers"].items()}
         raw.append({"prompt": prompt, "gold": gold, "scores": scores})
-        parts = " ".join("%s=%.2f" % (k.split(':')[1][:6], v) for k, v in scores.items())
-        print("  %26s | %s" % (gold or "AMBIG", parts))
+        parts = " ".join(f"{k.split(chr(58))[1][:6]}={v:.2f}" for k, v in scores.items())
+        label = gold if gold else 'AMBIG'
+        print(f'  {label:>26} | {parts}')
 
     def route(scores: dict, temp: float):
         scaled = {k: sig(logit(v) / temp) for k, v in scores.items()}
@@ -102,9 +103,9 @@ def main() -> None:
 
     best_t, best_loss = 1.0, None
     for t in [x / 100 for x in range(30, 201, 2)]:
-        l = bce(raw, t)
-        if best_loss is None or l < best_loss:
-            best_t, best_loss = t, l
+        loss = bce(raw, t)
+        if best_loss is None or loss < best_loss:
+            best_t, best_loss = t, loss
 
     correct_before = correct_after = 0
     unsafe_after = 0
