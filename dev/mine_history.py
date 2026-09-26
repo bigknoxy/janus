@@ -1,23 +1,17 @@
 #!/usr/bin/env python3
-"""Mine janus's own git history into real-fix eval fixtures.
+"""Mine janus's own git history into single-concern eval fixtures.
 
-The SWE-bench trick at home scale: every merged fix commit is a
-bug→fix pair with a real prompt (the message) and a real oracle (the
-tests the fix made pass). For each candidate commit:
+v2 (2026-09-26): multi-concern commits like the P0 audit fix (traversal +
+create-parity + bare-except narrowing) previously generated one giant
+fixture too big for a 4B patch. Now: run every test node of the touched
+test files against the PARENT tree; each failing node becomes its own
+fixture with only that test function. One bug → one fixture → one patch.
 
-  buggy_files  = source files as of the PARENT rev
-  tests        = the test file(s) the commit touched (as of commit HEAD)
-  prompt       = cleaned commit subject
-  validity     = tests FAIL on parent content and PASS at HEAD
-                 (the only honest fixture criteria)
-
-Corpus lands in eval_corpus/history/. Deduplicates by sha, so it's safe
-to re-run after every merge — benchmarks grow themselves.
-
-    python dev/mine_history.py [--repo .] [--since v0.1.0]
+Output: eval_corpus/history/history_<sha>_<testname>.json, deduped by name.
 """
 
 import argparse
+import ast
 import json
 import os
 import re
@@ -30,21 +24,7 @@ HERE = Path(__file__).resolve().parent.parent
 
 
 def sh(args: list[str], cwd: Path) -> str:
-    r = subprocess.run(args, cwd=cwd, capture_output=True, text=True, timeout=60)
-    return r.stdout.strip()
-
-
-def commits(repo: Path, since: str | None) -> list[tuple[str, str, str]]:
-    rng = f"{since}..HEAD" if since else "HEAD"
-    out = sh(["git", "log", "--first-parent", rng, "--format=%H%x00%P%x00%s"], repo)
-    rows = []
-    for line in out.splitlines():
-        if not line:
-            continue
-        h, parents, subject = line.split("\x00", 2)
-        parent = parents.split()[0] if parents else ""
-        rows.append((h, parent, subject))
-    return rows
+    return subprocess.run(args, cwd=cwd, capture_output=True, text=True, timeout=60).stdout.strip()
 
 
 def looks_like_fix(subject: str) -> bool:
@@ -52,64 +32,164 @@ def looks_like_fix(subject: str) -> bool:
     return bool(head) or "fix" in subject.lower()
 
 
-def mine_commit(repo: Path, sha: str, parent: str) -> dict | None:
+def tree_files(repo: Path, rev: str, prefix: str) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for rel in sh(["git", "ls-tree", "-r", "--name-only", rev, prefix], repo).splitlines():
+        if rel.endswith(".py"):
+            out[rel] = sh(["git", "show", f"{rev}:{rel}"], repo)
+    return out
+
+
+def write_tree(root: Path, files: dict[str, str]) -> None:
+    shim = "import sys, pathlib\nsys.path.insert(0, str(pathlib.Path(__file__).parent / 'src'))\n"
+    (root / "conftest.py").write_text(shim)
+    init = files.pop("tests/__init__.py", "")
+    for rel, content in {**files, "tests/__init__.py": init}.items():
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content)
+
+
+def failing_nodes(root: Path, test_file: str) -> list[str]:
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(root / "src")
+    print(env.get("PATH"))
+    r = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--collect-only",
+            "-q",
+            "--import-mode=importlib",
+            test_file,
+        ],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env=env,
+    )
+    nodes = [ln.strip() for ln in r.stdout.splitlines() if "::" in ln]
+    return nodes
+
+
+def node_fails(root: Path, node: str) -> bool:
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(root / "src")
+    r = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", "--import-mode=importlib", node],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env=env,
+    )
+    return r.returncode != 0
+
+
+def extract_test(source: str, node: str) -> str:
+    """Line-faithful slice: top-of-file imports/assigns + the requested
+    class/function's original lines."""
+    parts = node.split("::")
+    cls_name = parts[1] if len(parts) == 3 else None
+    fn_name = parts[-1]
+    lines = source.splitlines()
+    tree = ast.parse(source)
+    keep: set[int] = set()
+    for n in tree.body:
+        # keep imports, module assigns, and module-level helper functions
+        if isinstance(n, (ast.Import, ast.ImportFrom, ast.Assign)):
+            keep.update(range(n.lineno, (n.end_lineno or n.lineno) + 1))
+        elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if not n.name.startswith("test_") or (not cls_name and n.name == fn_name):
+                keep.update(range(n.lineno, (n.end_lineno or n.lineno) + 1))
+        elif isinstance(n, ast.ClassDef) and cls_name and n.name == cls_name:
+            for sub in n.body:
+                if isinstance(sub, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    if sub.name == fn_name or not sub.name.startswith("test_"):
+                        for lno in range(n.lineno, n.body[0].lineno):
+                            keep.add(lno)
+                        keep.update(range(sub.lineno, (sub.end_lineno or sub.lineno) + 1))
+                else:
+                    keep.update(range(sub.lineno, (sub.end_lineno or sub.lineno) + 1))
+    return "\n".join(ln for i, ln in enumerate(lines, 1) if i in keep)
+
+
+def mine_commit(repo: Path, sha: str, parent: str, subject: str) -> list[dict]:
     if not parent:
-        return None
-    diff_files = sh(["git", "diff-tree", "--no-commit-id", "--name-status", "-r", sha], repo)
-    src_files, test_files = [], []
-    for line in diff_files.splitlines():
-        status, _, path = line.partition("\t")
-        if not path.endswith(".py"):
-            continue
-        if path.startswith("tests/"):
-            test_files.append(path)
-        elif path.startswith("src/"):
-            src_files.append(path)
-    if not src_files or not test_files or len(src_files) > 2 or len(test_files) > 2:
-        return None
+        return []
+    diff_files = sh(["git", "diff-tree", "--no-commit-id", "--name-only", "-r", sha], repo)
+    src_files = [
+        ln.split("\t")[-1]
+        for ln in diff_files.splitlines()
+        if ln.split("\t")[-1].startswith("src/") and ln.split("\t")[-1].endswith(".py")
+    ]
+    test_files = [
+        ln.split("\t")[-1]
+        for ln in diff_files.splitlines()
+        if ln.split("\t")[-1].startswith("tests/") and ln.split("\t")[-1].endswith(".py")
+    ]
+    if not src_files or not test_files or len(src_files) > 3 or len(test_files) > 2:
+        return []
 
-    files: dict[str, str] = {}
-    # Full parent source tree: mined tests import the package, not one file.
-    all_src = sh(["git", "ls-tree", "-r", "--name-only", parent, "src/"], repo)
-    for f in all_src.splitlines():
-        if f.endswith(".py"):
-            files[f] = sh(["git", "show", f"{parent}:{f}"], repo) + "\n"
-    tests: dict[str, str] = {}
-    for f in test_files:
-        fixed = sh(["git", "show", f"{sha}:{f}"], repo)
-        if fixed:
-            tests[f] = fixed + "\n"
-    if not tests:
-        return None
-    # Support files tests need (marker constants etc.): pull tests/__init__
-    init = sh(["git", "show", f"{parent}:tests/__init__.py"], repo)
-    files["tests/__init__.py"] = init or ""
-    files["conftest.py"] = ("import sys, pathlib\n"
-                            "sys.path.insert(0, str(pathlib.Path(__file__).parent / 'src'))\n")
-    return {"src": src_files, "tests": test_files, "files": files, "test_files": tests}
+    parent_tree = tree_files(repo, parent, "src/")
+    shim_src = {
+        "tests/__init__.py": tree_files(repo, parent, "tests/").get("tests/__init__.py", "")
+    }
+    parent_tree.update(shim_src)
 
+    # whole-repo test tree at HEAD: tests may import siblings' helpers
+    tree_files(repo, parent, "tests/")
 
-def validate(files: dict[str, str], tests: dict[str, str]) -> bool:
-    """Red on the buggy inputs, and at least one test present that could
-    flip (we don't assert green-on-HEAD here — correctness of HEAD is the
-    tree's business)."""
+    fixed_tests = tree_files(repo, sha, "tests/")
+    file_names = ", ".join(Path(f).name for f in src_files)
+
+    fixtures = []
     with tempfile.TemporaryDirectory() as d:
         root = Path(d)
-        for rel, c in {**files, **tests}.items():
-            p = root / rel
-            p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(c)
-        # minimal package shims
-        for pkg in (root / "src").rglob("*"):
-            if pkg.is_dir() and (pkg / "__init__.py").exists() is False:
-                pass
-        test_targets = [str(p.relative_to(root)) for p in root.rglob("test_*.py")]
-        r = subprocess.run(
-            [sys.executable, "-m", "pytest", "-q", "--import-mode=importlib", *test_targets],
-            cwd=root, capture_output=True, text=True, timeout=180,
-            env={"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "PYTHONPATH": str(root / "src")},
-        )
-        return r.returncode != 0
+        # materialize parent tree: parent tests fail; commit's tests added
+        files = dict(parent_tree)
+        for rel, content in fixed_tests.items():
+            if rel not in files or files[rel] != content:
+                files[rel] = content
+        # include all tests as of fixed commit (import helpers intact)
+        write_tree(root, files)
+        nodes = []
+        for tf in fixed_tests:
+            if tf not in parent_tree or parent_tree.get(tf) != fixed_tests[tf]:
+                for node in failing_nodes(root, tf):
+                    if node_fails(root, node):
+                        nodes.append(node)
+        for node in set(nodes):
+            fname = node.split("::")[-1]
+            test_file_key = node.split("::")[0]  # e.g. tests/test_x.py
+            test_file_rel = (
+                ("tests/" + test_file_key)
+                if not test_file_key.startswith("tests/")
+                else test_file_key
+            )
+            test_src = fixed_tests.get(test_file_rel) or list(fixed_tests.values())[0]
+            try:
+                content = extract_test(test_src, node) + "\n"
+                ast.parse(content)
+            except SyntaxError:
+                content = test_src  # fallback: whole file
+            # re-validate: the SLICE must compile and still be red on parent
+            (root / test_file_rel).write_text(content)
+            if not node_fails(root, node):
+                continue
+            fixtures.append(
+                {
+                    "name": f"history_{sha[:7]}_{fname}",
+                    "bug_class": "real-history",
+                    "origin": f"janus {sha[:7]} · {subject[:80]}",
+                    "prompt": f"{subject}; fix files: {file_names}",
+                    "files": parent_tree,
+                    "tests": {test_file_rel: content},
+                }
+            )
+    return fixtures
 
 
 def main() -> None:
@@ -119,30 +199,25 @@ def main() -> None:
     args = ap.parse_args()
     out_dir = args.repo / "eval_corpus" / "history"
     out_dir.mkdir(parents=True, exist_ok=True)
-    found = 0
-    for sha, parent, subject in commits(args.repo, args.since):
+    added = 0
+    rng = f"{args.since}..HEAD" if args.since else "HEAD"
+    for line in sh(
+        ["git", "log", "--first-parent", rng, "--format=%H%x00%P%x00%s"], args.repo
+    ).splitlines():
+        if not line:
+            continue
+        sha, parents, subject = line.split("\x00", 2)
+        parent = parents.split()[0] if parents else ""
         if not looks_like_fix(subject):
             continue
-        if (out_dir / f"history_{sha[:7]}.json").exists():
-            continue
-        mined = mine_commit(args.repo, sha, parent)
-        if not mined:
-            continue
-        if not validate(mined["files"], mined["test_files"]):
-            continue
-        file_names = ", ".join(Path(f).name for f in mined["src"])
-        fx = {
-            "name": f"history_{sha[:7]}",
-            "bug_class": "real-history",
-            "origin": f"janus commit {sha[:7]} ({subject[:66]})",
-            "prompt": f"{subject} fix files: {file_names}",
-            "files": mined["files"],
-            "tests": mined["test_files"],
-        }
-        (out_dir / f"{fx['name']}.json").write_text(json.dumps(fx, indent=2))
-        found += 1
-        print(f"mined {fx['name']}: {subject[:60]}")
-    print(f"history corpus: +{found} fixtures")
+        for fx in mine_commit(args.repo, sha, parent, subject):
+            dest = out_dir / f"{fx['name']}.json"
+            if dest.exists():
+                continue
+            dest.write_text(json.dumps(fx, indent=2))
+            added += 1
+            print("mined", fx["name"])
+    print(f"history corpus: +{added} fixtures (this run)")
 
 
 if __name__ == "__main__":
