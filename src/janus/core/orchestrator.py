@@ -82,6 +82,7 @@ class RunReport(BaseModel):
     verification: VerificationResult | None = None
     repair_note: str | None = None
     message: str = ""
+    arbitration: dict | None = None  # JB-3: {candidates, chosen, scores} when S1 ranked
 
 
 class PipelineOrchestrator:
@@ -143,7 +144,9 @@ class PipelineOrchestrator:
                 decision.micro_instruction, slices, repair_note=repair_note
             )
             try:
-                raw = self._s2.generate_patch(prompt)
+                raw, arbitration = self._generate_and_rank(
+                    prompt, decision.micro_instruction
+                )
                 patches = parse_patches(raw)
             except (GenerationError, PatchParseError) as e:
                 # Model-side failures are retry data. Everything else is a
@@ -176,6 +179,7 @@ class PipelineOrchestrator:
                     patches=patches,
                     verification=verification,
                     repair_note=repair_note,
+                    arbitration=arbitration,
                 )
 
             repair_note = triage_failure(verification, repo_root)
@@ -190,6 +194,33 @@ class PipelineOrchestrator:
         )
 
     # ------------------------------------------------------------------
+
+    def _generate_and_rank(
+        self, prompt: str, instruction: str
+    ) -> tuple[str, dict | None]:
+        """JB-3: when s1_rank_candidates > 0, draw N candidates and let S1
+        pick the champion; verification remains the judge either way."""
+        n = self._settings.s1_rank_candidates
+        if n <= 1:
+            return self._s2.generate_patch(prompt), None
+        gen_multi = getattr(self._s2, "generate_patches", None)
+        candidates: list[str]
+        if callable(gen_multi):
+            candidates = gen_multi(prompt, n)
+        else:
+            candidates = [self._s2.generate_patch(prompt)]
+        if len(candidates) <= 1:
+            return candidates[0], None
+        rank = getattr(self._s1, "rank_patches", None)
+        order: list[int] = (
+            list(rank(instruction, candidates)) if callable(rank) else list(range(len(candidates)))
+        )
+        chosen = order[0]
+        return candidates[chosen], {
+            "candidates": len(candidates),
+            "chosen": chosen,
+            "order": order,
+        }
 
     def _collect_slices(
         self, decision: System1Decision, repo_root: str
