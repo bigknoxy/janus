@@ -49,3 +49,38 @@ def test_missing_proc_loadavg_is_noop():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+def test_orchestrator_governor_saturates_cleanly(tmp_path):
+    from janus.core.orchestrator import PipelineOrchestrator, RunStatus
+    from janus.core.types import IntentType, System1Decision
+    from janus.system1.mock_engine import MockDecisionEngine
+
+    class _StubS2:
+        def generate_patch(self, prompt, temperature=None):
+            raise AssertionError("must never be reached under saturation")
+
+    (tmp_path / "mod.py").write_text("def add(a,b):\n    return a-b\n")
+    settings = JanusSettings(
+        s2_loadavg_limit=0.5, s2_loadavg_timeout=0.05,  # 0.5<load always; tiny timeout
+        max_repair_attempts=0,
+    )
+    orch = PipelineOrchestrator(
+        s1=MockDecisionEngine(
+            System1Decision(
+                intent=IntentType.CODE_MODIFICATION, confidence=0.99,
+                micro_instruction="fix mod.py", target_files=["mod.py"],
+                target_symbols=["add"], requires_s2=True,
+            )
+        ),
+        s2=_StubS2(), runner=None, settings=settings,
+    )
+    import unittest.mock as mock
+    with mock.patch("janus.core.governor._proc_loadavg", return_value=9.9):
+        rep = orch.run_modify(
+            orch._s1.evaluate("fix mod.py", "mod.py :: add"), str(tmp_path)
+        )
+    from janus.core.orchestrator import RunStatus as RS
+    assert rep.status == RS.FAILED_ROLLED_BACK
+    assert "load-saturated" in rep.message
+    assert (tmp_path / "mod.py").read_text() == "def add(a,b):\n    return a-b\n"

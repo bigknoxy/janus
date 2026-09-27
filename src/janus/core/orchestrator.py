@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from janus.context.ast_pruner import extract_symbol, mentioned_symbols
 from janus.core.config import JanusSettings
-from janus.core.governor import LoadGovernor
+from janus.core.governor import LoadGovernor, LoadSaturatedError
 from janus.core.types import (
     IntentType,
     PatchBlock,
@@ -149,6 +149,16 @@ class PipelineOrchestrator:
                     prompt, decision.micro_instruction
                 )
                 patches = parse_patches(raw)
+            except LoadSaturatedError as e:
+                # backpressure timeout is an environment finding, not a
+                # model failure: stop cleanly, nothing applied yet (P0-2)
+                self._restore(originals, repo_root)
+                return RunReport(
+                    status=RunStatus.FAILED_ROLLED_BACK,
+                    decision=decision,
+                    repair_note=repair_note,
+                    message=f"load-saturated: {e}; originals restored",
+                )
             except (GenerationError, PatchParseError) as e:
                 # Model-side failures are retry data. Everything else is a
                 # bug in OUR code and must crash loudly (P0-3).
