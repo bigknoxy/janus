@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.9.0](https://github.com/bigknoxy/janus/compare/v0.8.0...v0.9.0) (2026-09-27)
+
+
+### Features
+
+* JB-2 ledger arbitration ([#47](https://github.com/bigknoxy/janus/issues/47)) ([066213f](https://github.com/bigknoxy/janus/commit/066213ffb2f2e3e0b991cdc89be663d55129e30b))
+* JB-3 S1 patch-candidate ranking ([#42](https://github.com/bigknoxy/janus/issues/42)) ([462063e](https://github.com/bigknoxy/janus/commit/462063e0706a54d102714c425a15621c8a49d8e8))
+* LoadGovernor + single-flight eval lock ([#45](https://github.com/bigknoxy/janus/issues/45)) ([3142d5b](https://github.com/bigknoxy/janus/commit/3142d5baed69acab3970fb965fbe50861fa94d04))
+* miner v2 fixture splitting ([#38](https://github.com/bigknoxy/janus/issues/38)) ([ab3d63c](https://github.com/bigknoxy/janus/commit/ab3d63c0560a7a54aaa6126edf1215708d3963f3))
+
+
+### Bug Fixes
+
+* **eval:** conftest shim for mined fixtures ([#43](https://github.com/bigknoxy/janus/issues/43)) ([a1cc747](https://github.com/bigknoxy/janus/commit/a1cc7470e1bf5cabcaf23d5c4564028327cebb9c))
+* miner prompt anchors + regen ([#30](https://github.com/bigknoxy/janus/issues/30)) ([e2b9196](https://github.com/bigknoxy/janus/commit/e2b919626a166024448f2eadb0d4f19e6c7c665a))
+* miner prompts carry anchors ([#29](https://github.com/bigknoxy/janus/issues/29)) ([23a2a4e](https://github.com/bigknoxy/janus/commit/23a2a4ed673325858c8f52c2d1c865a18da33615))
+* prefill-measured timeouts ([#35](https://github.com/bigknoxy/janus/issues/35)) ([5581e49](https://github.com/bigknoxy/janus/commit/5581e498370401a07e806ab8f889c8b4049b49e2))
+* ruff drift ([#27](https://github.com/bigknoxy/janus/issues/27)) ([4d90575](https://github.com/bigknoxy/janus/commit/4d90575292b4928fd0fd0af1664a615721c08d56))
+
 ## [0.8.0](https://github.com/bigknoxy/janus/compare/v0.7.0...v0.8.0) (2026-09-26)
 
 
