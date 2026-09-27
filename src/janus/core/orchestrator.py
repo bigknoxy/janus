@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from janus.context.ast_pruner import extract_symbol, mentioned_symbols
 from janus.core.config import JanusSettings
+from janus.core.governor import LoadGovernor
 from janus.core.types import (
     IntentType,
     PatchBlock,
@@ -201,8 +202,14 @@ class PipelineOrchestrator:
         """JB-3: when s1_rank_candidates > 0, draw N candidates and let S1
         pick the champion; verification remains the judge either way."""
         n = self._settings.s1_rank_candidates
+        gov = LoadGovernor(
+            limit=self._settings.s2_loadavg_limit,
+            timeout_s=self._settings.s2_loadavg_timeout,
+        )
         if n <= 1:
+            gov.wait()
             return self._s2.generate_patch(prompt), None
+        gov.wait()
         gen_multi = getattr(self._s2, "generate_patches", None)
         candidates: list[str]
         if callable(gen_multi):

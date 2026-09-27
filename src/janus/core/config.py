@@ -40,6 +40,14 @@ class JanusSettings(BaseSettings):
         le=0.5,
         description="Modify intents share the base floor; vague-target rule carries safety",
     )
+    s2_loadavg_limit: float = Field(
+        default=0.0,
+        ge=0.0,
+        description="If >0, wait for /proc/loadavg < limit before each S2 call (0=off)",
+    )
+    s2_loadavg_timeout: float = Field(
+        default=600.0, gt=0.0, description="Max seconds the governor queues before failing loudly"
+    )
     s1_rank_candidates: int = Field(
         default=0,
         ge=0,
