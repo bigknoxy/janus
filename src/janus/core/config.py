@@ -40,6 +40,12 @@ class JanusSettings(BaseSettings):
         le=0.5,
         description="Modify intents share the base floor; vague-target rule carries safety",
     )
+    s1_rank_candidates: int = Field(
+        default=0,
+        ge=0,
+        le=3,
+        description="JB-3: if >1, draw N patch candidates per attempt, S1 ranks champion",
+    )
 
     # --- System 2 (local LLM, OpenAI-compatible) ---
     s2_base_url: str = Field(

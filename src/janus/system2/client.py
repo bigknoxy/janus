@@ -44,11 +44,16 @@ class LocalGenerativeEngine:
         self._settings = settings or JanusSettings()
         self._transport = transport or _httpx_transport
 
-    def generate_patch(self, prompt: str) -> str:
+    def generate_patches(self, prompt: str, n: int = 1) -> list[str]:
+        """JB-3: N candidates at rising temperatures for rank diversity."""
+        temps = [self._settings.s2_temperature, 0.2, 0.4][: max(n, 1)]
+        return [self.generate_patch(prompt, temperature=t) for t in temps]
+
+    def generate_patch(self, prompt: str, temperature: float | None = None) -> str:
         s = self._settings
         payload = {
             "model": s.s2_model,
-            "temperature": s.s2_temperature,
+            "temperature": s.s2_temperature if temperature is None else temperature,
             "max_tokens": s.s2_max_tokens,
             "stream": False,
             "messages": [

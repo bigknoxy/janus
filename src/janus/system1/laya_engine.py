@@ -55,6 +55,24 @@ class LayaDecisionEngine:
         except (httpx.HTTPError, ValueError) as e:
             raise RuntimeError(f"laya-serve backend error: {e}") from e
 
+    def rank_patches(self, instruction: str, candidates: list[str]) -> list[int]:
+        """JB-3: noul arbitration over patch candidates; identity when the
+        model has no signal (all < 0.5) — first-candidate-wins doctrine."""
+        from janus.system1.patch_ranker import rank_by_scores, rank_questions
+
+        questions = rank_questions(candidates)
+        state = {"request": instruction, "repository": ""}
+        if self._agent is not None:
+            result: dict[str, Any] = self._agent.predict(state, questions)
+        else:
+            result = self._predict_http(state, questions)
+        answers = result.get("answers", {})
+        scores = [
+            float(answers.get(f"patch:{i}", {}).get("noul", 0.0))
+            for i in range(len(candidates))
+        ]
+        return rank_by_scores(scores)
+
     def evaluate(self, user_prompt: str, repo_summary: str) -> System1Decision:
         state = {"request": user_prompt, "repository": repo_summary}
 
