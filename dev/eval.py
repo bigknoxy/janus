@@ -41,6 +41,14 @@ MODES = ("full", "no-gate", "no-repair")
 
 
 def _materialize(fixture: dict, root: Path) -> None:
+    # src-layout shim (mined fixtures reproduce src/ trees; pytest must
+    # resolve janus from the fixture, not the host import path)
+    if any(rel.startswith("src/") for rel in fixture["files"]):
+        shim = (
+            "import sys,pathlib\n"
+            "sys.path.insert(0,str(pathlib.Path(__file__).parent/'src'))\n"
+        )
+        (root / "conftest.py").write_text(shim)
     for rel, content in {**fixture["files"], **fixture["tests"]}.items():
         target = root / rel
         target.parent.mkdir(parents=True, exist_ok=True)
