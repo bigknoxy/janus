@@ -48,3 +48,20 @@
 
 `context/ast_pruner.py` holds a `LangSpec` registry — Python and JavaScript
 ship; a new grammar is a registration, not a refactor.
+
+## Arbitration (JB-2)
+
+The gate's correctness is reported per-decision, not on aggregate. Every
+eval row carries S1's decision record (`s1.intent/confidence/targets`) and,
+when the patch-ranker ran (JB-3), its arbitration record
+(`candidates/chosen/order`). From a full matrix run — which includes the
+gate-removed ablation — the ledger derives two counters:
+
+- **gate_saves**: fixtures where bypassing the gate produced a worse
+  outcome (CORRUPT / WRONG-INTENT / FAILED) than the gated run
+- **gate_overreaches**: fixtures where the gate blocked a fix the
+  ungated run would have landed (no-gate PASSED, full SAFE-FAIL/ESCALATE)
+
+These render on the public Ledger so the anchor-gate doctrine stays
+observable, and `gate_overreaches > 0` is the early-warning that the gate
+has become a liar.

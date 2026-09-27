@@ -163,6 +163,13 @@ def run_fixture(fixture: dict, mode: str, settings: JanusSettings, python: str) 
             "fixture": fixture["name"], "mode": mode, "outcome": outcome,
             "seconds": round(dt, 1), "status": str(report.status),
             "repair_note": report.repair_note,
+            "s1": {
+                "intent": str(report.decision.intent),
+                "confidence": report.decision.confidence,
+                "target_files": report.decision.target_files,
+                "target_symbols": report.decision.target_symbols,
+            },
+            "arbitration": report.arbitration,
         }
 
 
@@ -189,6 +196,24 @@ def append_ledger(rows: list[dict], repo_root: Path) -> None:
         key = {"full": "full_pass", "no-gate": "nogate_pass", "no-repair": "norepair_pass"}.get(m)
         if key:
             row[key] = sum(1 for r in rows if r["mode"] == m and r["outcome"] == "PASSED")
+    # JB-2 arbitration bookkeeping: the gate is "right" when bypassing it
+    # produces a worse outcome on the same fixture in the same run.
+    bad_no_gate = {"CORRUPT", "WRONG-INTENT", "FAILED"}
+    by_fixture: dict[str, dict[str, str]] = {}
+    for r in rows:
+        by_fixture.setdefault(r["fixture"], {})[r["mode"]] = r["outcome"]
+    row["gate_saves"] = sum(
+        1
+        for fx in by_fixture.values()
+        if "full" in fx
+        and fx["full"] not in bad_no_gate
+        and fx.get("no-gate") in bad_no_gate
+    )
+    row["gate_overreaches"] = sum(
+        1
+        for fx in by_fixture.values()
+        if fx.get("no-gate") == "PASSED" and fx.get("full") in {"SAFE-FAIL", "ESCALATE"}
+    )
     ledger["runs"].append(row)
     ledger["runs"] = ledger["runs"][-60:]
     ledger_path.write_text(json.dumps(ledger, indent=2) + "\n")
@@ -213,6 +238,23 @@ def summarize(rows: list[dict]) -> str:
         n_pass = sum(r["outcome"] == "PASSED" for r in sub)
         n_corrupt = sum(r["outcome"] == "CORRUPT" for r in sub)
         out.append(f"**{m}**: pass {n_pass}/{len(sub)} · corrupt {n_corrupt}")
+    # JB-2: arbitration recap in the markdown too
+    bad_no_gate = {"CORRUPT", "WRONG-INTENT", "FAILED"}
+    by_fixture: dict[str, dict[str, str]] = {}
+    for r in rows:
+        by_fixture.setdefault(r["fixture"], {})[r["mode"]] = r["outcome"]
+    saves = sum(
+        1
+        for fx in by_fixture.values()
+        if "full" in fx and fx["full"] not in bad_no_gate and fx.get("no-gate") in bad_no_gate
+    )
+    over = sum(
+        1
+        for fx in by_fixture.values()
+        if fx.get("no-gate") == "PASSED" and fx.get("full") in {"SAFE-FAIL", "ESCALATE"}
+    )
+    if "full" in modes and "no-gate" in modes:
+        out.append(f"**arbitration**: gate saved {saves} fixture(s); over-escalated {over}")
     return "\n".join(out)
 
 
