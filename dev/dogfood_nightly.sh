@@ -9,6 +9,15 @@ LOGS="$HERE/logs"
 mkdir -p "$LOGS"
 STAMP=$(date +%Y%m%d-%H%M)
 
+# Single-flight lock: a manual probing run and the cron run must never
+# fight the same single-slot llama-server (2026-09-27 rank-probe collision).
+LOCK="$LOGS/.eval.lock"
+exec 9>"$LOCK"
+if ! flock -n 9; then
+  echo "[skip] another janus eval is running (lock: $LOCK)" >&2
+  exit 0
+fi
+
 export CUDA_VISIBLE_DEVICES="" USE_TF=0
 export JANUS_S2_BASE_URL="${JANUS_S2_BASE_URL:-http://127.0.0.1:8081/v1}"
 export JANUS_S1_BACKEND="${JANUS_S1_BACKEND:-laya}"
