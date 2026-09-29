@@ -41,7 +41,6 @@ def mine_repo(url: str, since: str | None, out_dir: Path) -> int:
             print(f"clone failed: {r.stderr[:200]}")
             return 0
         repo_name = Path(url.rstrip("/")).stem
-<<<<<<< HEAD
         # layout auto-detection: src-layout (click, requests) vs flat-package
         # (pydantic, rich) — the hardcoded src/ prefix filtered every fix in
         # flat repos before validation ever ran
@@ -51,8 +50,6 @@ def mine_repo(url: str, since: str | None, out_dir: Path) -> int:
             pkg_prefix = f"{repo_name}/"
         else:
             pkg_prefix = "src/"
-=======
->>>>>>> origin/main
         rng = f"{since}..HEAD" if since else "--since='60 days ago'"
         log_cmd = ["git", "log", "--first-parent"]
         log_cmd += [rng] if since else ["--since=60 days ago"]
@@ -65,11 +62,8 @@ def mine_repo(url: str, since: str | None, out_dir: Path) -> int:
             head = subject.lower()
             if not (head.startswith(("fix", "bug", "patch")) or "fix" in head):
                 continue
-<<<<<<< HEAD
             for fx in mine_commit(clone, sha, parent, subject, pkg_prefix):
-=======
             for fx in mine_commit(clone, sha, parent, subject):
->>>>>>> origin/main
                 fx["bug_class"] = "real-external"
                 fx["origin"] = f"{repo_name}@{sha[:7]} · {subject[:80]}"
                 dest = out_dir / f"{repo_name}_{fx['name']}.json"
