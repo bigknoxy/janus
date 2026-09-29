@@ -53,7 +53,6 @@ def write_tree(root: Path, files: dict[str, str]) -> None:
 def failing_nodes(root: Path, test_file: str) -> list[str]:
     env = dict(os.environ)
     env["PYTHONPATH"] = str(root / "src")
-    print(env.get("PATH"))
     r = subprocess.run(
         [
             sys.executable,
@@ -119,7 +118,9 @@ def extract_test(source: str, node: str) -> str:
 def mine_commit(repo: Path, sha: str, parent: str, subject: str) -> list[dict]:
     if not parent:
         return []
-    diff_files = sh(["git", "diff-tree", "--no-commit-id", "--name-only", "-r", sha], repo)
+    # first-parent diff survives merge commits (diff-tree -r on a merge
+    # returns nothing — swallowed click's PR-shaped fixes during JB-1)
+    diff_files = sh(["git", "diff", "--name-only", parent, sha], repo)
     src_files = [
         ln.split("\t")[-1]
         for ln in diff_files.splitlines()
@@ -157,7 +158,11 @@ def mine_commit(repo: Path, sha: str, parent: str, subject: str) -> list[dict]:
         write_tree(root, files)
         nodes = []
         for tf in fixed_tests:
-            if tf not in parent_tree or parent_tree.get(tf) != fixed_tests[tf]:
+            # only tests the commit actually touched — the old guard
+            # (tf not in parent_tree) was always true for test files, so
+            # every repo test entered red-first validation; click's flaky
+            # parametrized stress tests burned hours as load-noise "fixes"
+            if tf in test_files:
                 for node in failing_nodes(root, tf):
                     if node_fails(root, node):
                         nodes.append(node)
