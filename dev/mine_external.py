@@ -63,7 +63,6 @@ def mine_repo(url: str, since: str | None, out_dir: Path) -> int:
             if not (head.startswith(("fix", "bug", "patch")) or "fix" in head):
                 continue
             for fx in mine_commit(clone, sha, parent, subject, pkg_prefix):
-            for fx in mine_commit(clone, sha, parent, subject):
                 fx["bug_class"] = "real-external"
                 fx["origin"] = f"{repo_name}@{sha[:7]} · {subject[:80]}"
                 dest = out_dir / f"{repo_name}_{fx['name']}.json"
