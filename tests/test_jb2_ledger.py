@@ -46,6 +46,17 @@ def test_ledger_counts_gate_saves_and_overreaches(tmp_path):
     assert run["gate_overreaches"] == 1
 
 
+def test_ledger_counts_infra_rows(tmp_path):
+    import json
+
+    rows = [_row("f_infra", "full", "INFRA"), _row("f_ok", "full", "PASSED")]
+    append_ledger(rows, tmp_path)
+    ledger = json.loads((tmp_path / "eval_ledger.json").read_text())
+    run = ledger["runs"][-1]
+    assert run["infra"] == 1
+    assert run["full_pass"] == 1
+
+
 def test_summarize_carries_arbitration_line():
     rows = [
         _row("f1", "full", "PASSED"),
