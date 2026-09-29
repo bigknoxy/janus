@@ -53,6 +53,7 @@ def write_tree(root: Path, files: dict[str, str]) -> None:
 def failing_nodes(root: Path, test_file: str) -> list[str]:
     env = dict(os.environ)
     env["PYTHONPATH"] = str(root / "src")
+    print(env.get("PATH"))
     r = subprocess.run(
         [
             sys.executable,
@@ -118,8 +119,9 @@ def extract_test(source: str, node: str) -> str:
 def mine_commit(repo: Path, sha: str, parent: str, subject: str) -> list[dict]:
     if not parent:
         return []
-    # first-parent diff survives merge commits (diff-tree -r on a merge
-    # returns nothing — swallowed click's PR-shaped fixes during JB-1)
+    # first-parent diff: works for both fix commits and PR merge commits
+    # (diff-tree -r on a merge commit returns nothing — that swallowed all
+    # of click's PR-merged fixes during the JB-1 probe)
     diff_files = sh(["git", "diff", "--name-only", parent, sha], repo)
     src_files = [
         ln.split("\t")[-1]
