@@ -172,6 +172,8 @@ janus run "fix first_n in mod.py: it returns one item too few" --root .</pre>
       <tr><td class="date">—fetching—</td><td class="pass">…</td><td class="pass">…</td><td class="pass">…</td><td class="pass">0</td><td class="pass">…</td></tr>
     </table>
     <p class="stamp" id="stamp">ledger row fires from the dogfood cron; page reads repo data at view time</p>
+    <p class="stamp">* rows marked * had infrastructure failures (e.g. a laptop network drop
+    mid-run) — not a pipeline verdict, kept for honesty rather than hidden</p>
     <p class="lead" style="margin-top:36px">Every failure rolls back byte-for-byte — files a broken run created get
     deleted, edits get restored. The ablations exist to prove the gate and the
     repair loop are load-bearing, not decoration.</p>
@@ -208,7 +210,7 @@ janus run "fix first_n in mod.py: it returns one item too few" --root .</pre>
     const cls = v => v === 0 ? "pass" : "fail";
     tr.innerHTML =
       `<td class="date">${run.date}</td>` +
-      `<td class="${run.full_pass === run.total ? "pass" : "fail"}">${run.full_pass}/${run.total}</td>` +
+      `<td class="${run.full_pass === run.total ? "pass" : "fail"}">${run.full_pass}/${run.total}${run.infra || run.note ? "*" : ""}</td>` +
       `<td class="${run.nogate_pass === run.total ? "pass" : "fail"}">${run.nogate_pass}/${run.total}</td>` +
       `<td class="${run.norepair_pass === run.total ? "pass" : "fail"}">${run.norepair_pass}/${run.total}</td>` +
       `<td class="${cls(run.corrupt)}">${run.corrupt}</td>` +

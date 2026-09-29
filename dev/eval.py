@@ -191,6 +191,7 @@ def append_ledger(rows: list[dict], repo_root: Path) -> None:
         "date": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M"),
         "total": total,
         "corrupt": sum(r["outcome"] == "CORRUPT" for r in rows),
+        "infra": sum(r["outcome"] == "INFRA" for r in rows),
     }
     for m in modes:
         key = {"full": "full_pass", "no-gate": "nogate_pass", "no-repair": "norepair_pass"}.get(m)

@@ -173,7 +173,17 @@ def mine_commit(
                     if node_fails(root, node, pydir):
                         nodes.append(node)
         for node in set(nodes):
-            fname = node.split("::")[-1]
+            import hashlib
+
+            raw_name = node.split("::")[-1]
+            # parametrized ids can embed full reprs (FieldInfo(...)) — over
+            # 255 bytes kills the filename (OSError 36 killed the pydantic
+            # sweep at 188 fixtures). Keep the function name, hash the node
+            # for uniqueness; the curation pass groups by the prefix.
+            fname = (
+                f"{raw_name.split('[')[0]}_"
+                f"{hashlib.sha1(node.encode()).hexdigest()[:8]}"
+            )
             test_file_key = node.split("::")[0]  # e.g. tests/test_x.py
             test_file_rel = (
                 ("tests/" + test_file_key)
