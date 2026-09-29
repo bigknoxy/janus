@@ -50,10 +50,9 @@ def write_tree(root: Path, files: dict[str, str]) -> None:
         p.write_text(content)
 
 
-def failing_nodes(root: Path, test_file: str) -> list[str]:
+def failing_nodes(root: Path, test_file: str, pydir: Path) -> list[str]:
     env = dict(os.environ)
-    env["PYTHONPATH"] = str(root / "src")
-    print(env.get("PATH"))
+    env["PYTHONPATH"] = str(pydir)
     r = subprocess.run(
         [
             sys.executable,
@@ -74,9 +73,9 @@ def failing_nodes(root: Path, test_file: str) -> list[str]:
     return nodes
 
 
-def node_fails(root: Path, node: str) -> bool:
+def node_fails(root: Path, node: str, pydir: Path) -> bool:
     env = dict(os.environ)
-    env["PYTHONPATH"] = str(root / "src")
+    env["PYTHONPATH"] = str(pydir)
     r = subprocess.run(
         [sys.executable, "-m", "pytest", "-q", "--import-mode=importlib", node],
         cwd=root,
@@ -116,7 +115,9 @@ def extract_test(source: str, node: str) -> str:
     return "\n".join(ln for i, ln in enumerate(lines, 1) if i in keep)
 
 
-def mine_commit(repo: Path, sha: str, parent: str, subject: str) -> list[dict]:
+def mine_commit(
+    repo: Path, sha: str, parent: str, subject: str, pkg_prefix: str = "src/"
+) -> list[dict]:
     if not parent:
         return []
     # first-parent diff: works for both fix commits and PR merge commits
@@ -126,7 +127,7 @@ def mine_commit(repo: Path, sha: str, parent: str, subject: str) -> list[dict]:
     src_files = [
         ln.split("\t")[-1]
         for ln in diff_files.splitlines()
-        if ln.split("\t")[-1].startswith("src/") and ln.split("\t")[-1].endswith(".py")
+        if ln.split("\t")[-1].startswith(pkg_prefix) and ln.split("\t")[-1].endswith(".py")
     ]
     test_files = [
         ln.split("\t")[-1]
@@ -136,7 +137,7 @@ def mine_commit(repo: Path, sha: str, parent: str, subject: str) -> list[dict]:
     if not src_files or not test_files or len(src_files) > 3 or len(test_files) > 2:
         return []
 
-    parent_tree = tree_files(repo, parent, "src/")
+    parent_tree = tree_files(repo, parent, pkg_prefix)
     shim_src = {
         "tests/__init__.py": tree_files(repo, parent, "tests/").get("tests/__init__.py", "")
     }
@@ -151,6 +152,9 @@ def mine_commit(repo: Path, sha: str, parent: str, subject: str) -> list[dict]:
     fixtures = []
     with tempfile.TemporaryDirectory() as d:
         root = Path(d)
+        # flat-layout repos (pydantic, rich) keep the package at root/<name>;
+        # src-layout (click, requests) need root/src on the path
+        pydir = root / "src" if pkg_prefix.startswith("src/") else root
         # materialize parent tree: parent tests fail; commit's tests added
         files = dict(parent_tree)
         for rel, content in fixed_tests.items():
@@ -165,8 +169,8 @@ def mine_commit(repo: Path, sha: str, parent: str, subject: str) -> list[dict]:
             # every repo test entered red-first validation; click's flaky
             # parametrized stress tests burned hours as load-noise "fixes"
             if tf in test_files:
-                for node in failing_nodes(root, tf):
-                    if node_fails(root, node):
+                for node in failing_nodes(root, tf, pydir):
+                    if node_fails(root, node, pydir):
                         nodes.append(node)
         for node in set(nodes):
             fname = node.split("::")[-1]
@@ -184,7 +188,7 @@ def mine_commit(repo: Path, sha: str, parent: str, subject: str) -> list[dict]:
                 content = test_src  # fallback: whole file
             # re-validate: the SLICE must compile and still be red on parent
             (root / test_file_rel).write_text(content)
-            if not node_fails(root, node):
+            if not node_fails(root, node, pydir):
                 continue
             fixtures.append(
                 {
