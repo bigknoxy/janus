@@ -168,7 +168,7 @@ janus run "fix first_n in mod.py: it returns one item too few" --root .</pre>
   <div class="wrap">
     <h2>The Ledger<span>nightly-measured, not marketed · real 4B qwen on a 2-core laptop</span></h2>
     <table id="ledger">
-      <tr><th>date</th><th>full pipeline</th><th>gate removed</th><th>repair removed</th><th>corrupt</th><th>gate saves</th></tr>
+      <tr><th>date</th><th>full pipeline</th><th>gate removed</th><th>repair removed</th><th>corrupt</th><th>gate saves·over</th></tr>
       <tr><td class="date">—fetching—</td><td class="pass">…</td><td class="pass">…</td><td class="pass">…</td><td class="pass">0</td><td class="pass">…</td></tr>
     </table>
     <p class="stamp" id="stamp">ledger row fires from the dogfood cron; page reads repo data at view time</p>
@@ -212,7 +212,7 @@ janus run "fix first_n in mod.py: it returns one item too few" --root .</pre>
       `<td class="${run.nogate_pass === run.total ? "pass" : "fail"}">${run.nogate_pass}/${run.total}</td>` +
       `<td class="${run.norepair_pass === run.total ? "pass" : "fail"}">${run.norepair_pass}/${run.total}</td>` +
       `<td class="${cls(run.corrupt)}">${run.corrupt}</td>` +
-      `<td class="${run.gate_saves ? "pass" : ""}">${run.gate_saves ?? "—"}</td>`;
+      `<td class="${run.gate_saves ? "pass" : ""}">${run.gate_saves != null ? run.gate_saves + " / " + (run.gate_overreaches ?? 0) : "—"}</td>`;
   }
   document.getElementById("stamp").textContent =
     "last nightly run " + data.runs[data.runs.length - 1].date + " UTC";
