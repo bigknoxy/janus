@@ -68,3 +68,8 @@ fi
 
 notify "DOGFOOD ($LATEST): $SUMMARY$FT_LINE$LEDGER_PR"
 echo "dogfood check-in posted (pulse + telegram)"
+
+# return the repo to main — the ledger step leaves it on ledger-update,
+# and the next run then operates from the wrong base (2026-09-28 stall:
+# refreshes silently no-op'd while parked on the old branch)
+git checkout -q main 2>/dev/null || echo "notifier: WARN repo not returned to main" >&2

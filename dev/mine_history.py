@@ -119,7 +119,10 @@ def extract_test(source: str, node: str) -> str:
 def mine_commit(repo: Path, sha: str, parent: str, subject: str) -> list[dict]:
     if not parent:
         return []
-    diff_files = sh(["git", "diff-tree", "--no-commit-id", "--name-only", "-r", sha], repo)
+    # first-parent diff: works for both fix commits and PR merge commits
+    # (diff-tree -r on a merge commit returns nothing — that swallowed all
+    # of click's PR-merged fixes during the JB-1 probe)
+    diff_files = sh(["git", "diff", "--name-only", parent, sha], repo)
     src_files = [
         ln.split("\t")[-1]
         for ln in diff_files.splitlines()
@@ -157,7 +160,11 @@ def mine_commit(repo: Path, sha: str, parent: str, subject: str) -> list[dict]:
         write_tree(root, files)
         nodes = []
         for tf in fixed_tests:
-            if tf not in parent_tree or parent_tree.get(tf) != fixed_tests[tf]:
+            # only tests the commit actually touched — the old guard
+            # (tf not in parent_tree) was always true for test files, so
+            # every repo test entered red-first validation; click's flaky
+            # parametrized stress tests burned hours as load-noise "fixes"
+            if tf in test_files:
                 for node in failing_nodes(root, tf):
                     if node_fails(root, node):
                         nodes.append(node)
