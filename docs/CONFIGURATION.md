@@ -8,7 +8,7 @@ working directory). Sensible defaults target a local Ollama-style endpoint.
 | `JANUS_S1_BACKEND` | `laya` | `laya` (local checkpoint) or `mock` (offline dev) |
 | `JANUS_S1_CHECKPOINT` | `convaiinnovations/laya` | HF checkpoint id |
 | `JANUS_S1_SUBFOLDER` | `typed-decisions` | checkpoint variant (`""` = English root) |
-| `JANUS_S1_SERVE_URL` | _(empty)_ | if set, use `laya-serve` HTTP instead of in-process |
+| `JANUS_S1_SERVE_URL` | _(empty)_ | if set, use `laya-serve` HTTP instead of in-process. **Ollama 0.35+ is a drop-in**: `http://localhost:11434` + `JANUS_S1_SUBFOLDER=tev1:0.8b` — the same `/v1/systemone` schema (noul/choice/score), same decision assembler, zero engine changes. Measured on the laptop: 0.7 s warm per decision vs ~29 s in-process |
 | `JANUS_S1_MARGIN_FLOOR` | `0.04` | top1−top2 probability gap below which S1 escalates |
 | `JANUS_CONFIDENCE_THRESHOLD` | `0.85` | absolute gate for margin-less engines |
 | `JANUS_S2_BASE_URL` | `http://localhost:8080/v1` | OpenAI-compatible endpoint |
