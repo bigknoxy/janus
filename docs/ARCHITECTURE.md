@@ -65,3 +65,14 @@ gate-removed ablation — the ledger derives two counters:
 These render on the public Ledger so the anchor-gate doctrine stays
 observable, and `gate_overreaches > 0` is the early-warning that the gate
 has become a liar.
+
+## System One backends (2026-09-30)
+
+The S1's protocol seam is real: the laya-serve backend was built
+Jev-compatible, and Ollama 0.35's `/v1/systemone` endpoint speaks the
+same schema — so **Ollama is a drop-in S1 backend** (`JANUS_S1_SERVE_URL`
++ `JANUS_S1_SUBFOLDER` = the decision model), with zero engine changes.
+Measured on the laptop: tev1:0.8b classifies correctly at 0.7 s warm per
+decision (vs ~29 s in-process) with real top1−top2 probability gaps —
+which means the anchor rule and margin floor finally operate on a true
+distribution rather than a parsed guess.
