@@ -43,12 +43,15 @@ MODES = ("full", "no-gate", "no-repair")
 def _materialize(fixture: dict, root: Path) -> None:
     # src-layout shim (mined fixtures reproduce src/ trees; pytest must
     # resolve janus from the fixture, not the host import path)
-    if any(rel.startswith("src/") for rel in fixture["files"]):
-        shim = (
-            "import sys,pathlib\n"
-            "sys.path.insert(0,str(pathlib.Path(__file__).parent/'src'))\n"
-        )
-        (root / "conftest.py").write_text(shim)
+    # shim covers BOTH layouts: root/src for src-layout fixtures (janus,
+    # click), the root itself for flat-package ones (pydantic, rich) —
+    # harmless when a layout doesn't need its insert
+    shim = (
+        "import sys, pathlib\n"
+        "sys.path.insert(0,str(pathlib.Path(__file__).parent/'src'))\n"
+        "sys.path.insert(0,str(pathlib.Path(__file__).parent))\n"
+    )
+    (root / "conftest.py").write_text(shim)
     for rel, content in {**fixture["files"], **fixture["tests"]}.items():
         target = root / rel
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -191,6 +194,7 @@ def append_ledger(rows: list[dict], repo_root: Path) -> None:
         "date": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M"),
         "total": total,
         "corrupt": sum(r["outcome"] == "CORRUPT" for r in rows),
+        "infra": sum(r["outcome"] == "INFRA" for r in rows),
     }
     for m in modes:
         key = {"full": "full_pass", "no-gate": "nogate_pass", "no-repair": "norepair_pass"}.get(m)
@@ -278,6 +282,10 @@ def main() -> int:
     ap.add_argument("--md", type=Path)
     ap.add_argument("--json", type=Path)
     ap.add_argument("--fixture", action="append")
+    ap.add_argument("--python", default=sys.executable,
+                    help="python for the per-fixture pytest runs — point it at "
+                         "an era-matched venv when the corpus' source needs a "
+                         "different dependency set than janus itself")
     args = ap.parse_args()
 
     modes = args.modes or list(MODES)
@@ -292,7 +300,7 @@ def main() -> int:
     if not _s2_healthy(settings):
         print("S2 endpoint unreachable — aborting (no fake matrix)", file=sys.stderr)
         return 5
-    python = sys.executable
+    python = args.python
     rows: list[dict] = []
     for mode in modes:
         for fx_path in fixtures:

@@ -12,7 +12,8 @@
       "corrupt": 0,
       "full_pass": 0,
       "nogate_pass": 0,
-      "norepair_pass": 0
+      "norepair_pass": 0,
+      "note": "infra-contaminated probe: laptop network drop mid-run; not a fair test"
     },
     {
       "date": "2026-09-27 08:06",
