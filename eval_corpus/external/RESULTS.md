@@ -14,6 +14,7 @@ scoping, parametrized-id-safe filenames).
 | full (gate + repair) | 0/20 | 0 |
 | no-gate (repair only) | 0/20 · 17 SAFE-FAIL | 0 |
 | no-repair | 0/20 | 0 |
+| full, Ollama-S1 decider (2026-10-01) | 0/20 · all ESCALATE | 0 |
 
 - **0 corrupt across all 60 rows** — the rollback doctrine holds on
   external bugs: every failed repair restored byte-for-byte
@@ -23,6 +24,13 @@ scoping, parametrized-id-safe filenames).
 - **The S2's repair fixes nothing external (0/20, fails safe)** — 4B on
   a 2-core laptop cannot repair pydantic's codebase. SAFE-FAIL is the
   honest outcome: no wrong writes, no corruption.
+- **The escalation is structural, not a decider artifact (2026-10-01)**:
+  swapping the S1 for Ollama 0.35's systemone decider (tev1:0.8b — a
+  different model, 0.7s warm vs ~29s, one external probe PASSED at conf
+  0.946) reproduces the same 20/20 ESCALATE on the full arm. The gate's
+  margin logic on foreign prompts is the cause, not the Laya checkpoint.
+  An S1 *calibration* run (retraining the margin on external prompts) is
+  the remaining lever; a decider swap alone does not move it.
 
 ## Verdict
 
