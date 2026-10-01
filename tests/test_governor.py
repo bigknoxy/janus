@@ -52,8 +52,8 @@ if __name__ == "__main__":
 
 
 def test_orchestrator_governor_saturates_cleanly(tmp_path):
-    from janus.core.orchestrator import PipelineOrchestrator, RunStatus
-    from janus.core.types import IntentType, System1Decision
+    from janus.core.config import JanusSettings
+    from janus.core.orchestrator import PipelineOrchestrator
     from janus.system1.mock_engine import MockDecisionEngine
 
     class _StubS2:
@@ -66,13 +66,9 @@ def test_orchestrator_governor_saturates_cleanly(tmp_path):
         max_repair_attempts=0,
     )
     orch = PipelineOrchestrator(
-        s1=MockDecisionEngine(
-            System1Decision(
-                intent=IntentType.CODE_MODIFICATION, confidence=0.99,
-                micro_instruction="fix mod.py", target_files=["mod.py"],
-                target_symbols=["add"], requires_s2=True,
-            )
-        ),
+        # the mock derives its decision from the prompt keywords; settings
+        # carries the saturation config — never pass a decision positionally
+        s1=MockDecisionEngine(settings=settings, confidence=0.99),
         s2=_StubS2(), runner=None, settings=settings,
     )
     import unittest.mock as mock
