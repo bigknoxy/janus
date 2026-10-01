@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.10.0](https://github.com/bigknoxy/janus/compare/v0.9.0...v0.10.0) (2026-10-01)
+
+
+### Features
+
+* eval --python flag ([#56](https://github.com/bigknoxy/janus/issues/56)) ([12b2130](https://github.com/bigknoxy/janus/commit/12b21308954494127fa8e6914a3a48789d199d6b))
+* infra rows get an asterisk on the Ledger ([#53](https://github.com/bigknoxy/janus/issues/53)) ([79daa1e](https://github.com/bigknoxy/janus/commit/79daa1edb4d5a0a1c4af7a229c38d6182684cd9e))
+* JB-1 external-repo mining + miner scope fix ([#49](https://github.com/bigknoxy/janus/issues/49)) ([ecded9a](https://github.com/bigknoxy/janus/commit/ecded9a868c33a3fed282d79ed09c3cda7b62c71))
+* JB-1 layout auto-detection ([#51](https://github.com/bigknoxy/janus/issues/51)) ([d610ac6](https://github.com/bigknoxy/janus/commit/d610ac661421113b592502c09587a16f6fbc6f4f))
+
+
+### Bug Fixes
+
+* miner survives huge parametrized fixture names ([#54](https://github.com/bigknoxy/janus/issues/54)) ([6c7d6cc](https://github.com/bigknoxy/janus/commit/6c7d6cc3b2ecfa70ee7e83da839feeaec49455bd))
+* monitor false-alarm on untracked output ([#55](https://github.com/bigknoxy/janus/issues/55)) ([17dc2a5](https://github.com/bigknoxy/janus/commit/17dc2a55c4c4c042974fc2574dc50b5f6f256009))
+* nightly eval corpus scope — exclude external/ and external_raw/ ([e3ddaa2](https://github.com/bigknoxy/janus/commit/e3ddaa29a73dbd2e2abcc7f302e0926a9358d701))
+
+
+### Documentation
+
+* curated external corpus ([#58](https://github.com/bigknoxy/janus/issues/58)) ([24fce4e](https://github.com/bigknoxy/janus/commit/24fce4ea3b817b0f77168df42fdaf31b78b688ae))
+* external-corpus eval results ([#57](https://github.com/bigknoxy/janus/issues/57)) ([525630d](https://github.com/bigknoxy/janus/commit/525630db060502c57229d06d004c027b62dcc5cd))
+* Ollama 0.35 drop-in S1 backend ([#59](https://github.com/bigknoxy/janus/issues/59)) ([4f77693](https://github.com/bigknoxy/janus/commit/4f776937c99b0b18ada8c4dd7f9363db25d6e62b))
+
 ## [0.9.0](https://github.com/bigknoxy/janus/compare/v0.8.0...v0.9.0) (2026-09-27)
 
 
