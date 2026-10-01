@@ -6,6 +6,9 @@ the `laya` package are only touched when this engine is actually constructed
 (`pip install janus-code[laya]`).
 """
 
+import json
+import math
+from pathlib import Path
 from typing import Any
 
 from janus.core.config import JanusSettings
@@ -16,6 +19,45 @@ from janus.system1.schemas import (
     file_relevance_question,
     intent_questions,
 )
+
+_CALIBRATION_CANDIDATES = (
+    Path("dev/calibration.json"),                            # run from the repo root
+    Path(__file__).parents[3] / "dev" / "calibration.json",  # repo checkout, any CWD
+)
+
+
+def _apply_calibration(
+    scores: dict[str, float],
+    candidates: tuple[Path, ...] = _CALIBRATION_CANDIDATES,
+) -> dict[str, float]:
+    """Apply the fitted domain temperature (dev/calibration.json) if present.
+
+    sig(logit(p)/T) is monotonic for T>0, so the argmax — the routing — is
+    INVARIANT: the scaling only sharpens the confidence and margin the gate
+    reads. Foreign prompts hedge their nouls near 0.5; a T<1 fitted on a
+    labeled probe corpus lifts them over the escalation threshold without
+    touching prompts the gate already routes. Missing file, bad JSON, or
+    T==1 → scores unchanged. Per-box artifact: present only where fitted.
+    """
+    for path in candidates:
+        try:
+            t = float(json.loads(path.read_text())["fitted_temperature"])
+            break
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+    else:
+        return scores
+    if not scores or t <= 0 or t == 1.0:
+        return scores
+
+    def _logit(p: float) -> float:
+        p = min(max(p, 1e-6), 1 - 1e-6)
+        return math.log(p / (1 - p))
+
+    def _sig(x: float) -> float:
+        return 1.0 / (1.0 + math.exp(-x))
+
+    return {k: round(_sig(_logit(v) / t), 6) for k, v in scores.items()}
 
 
 class LayaDecisionEngine:
@@ -109,6 +151,7 @@ class LayaDecisionEngine:
             for key, ans in answers.items()
             if key.startswith("intent:")
         }
+        scores = _apply_calibration(scores)
         try:
             ranked_intents = sorted(scores, key=scores.get, reverse=True)  # type: ignore[arg-type]
             intent = IntentType(ranked_intents[0])
