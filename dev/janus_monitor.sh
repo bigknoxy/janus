@@ -5,8 +5,10 @@
 #   1. JB-1 sweep transition (miner exit → the yield report, once)
 #   2. zero-yield miner exit (a finding, not silence)
 #   3. eval process death mid-run (no completed md)
-#   4. ledger-PR staleness (laptop ledger changed >6h ago, never committed —
-#      the silent failure that hid the gate-saves data for weeks)
+#   4. ledger-PR staleness (laptop ledger ≠ the COMMITTED main ledger —
+#      ping ONCE per episode; the old working-tree comparison fired through
+#      every rebase — the 2026-10-01 ping storm, one ping per 20-min sweep
+#      while a branch's stale ledger sat in the tree)
 #   5. repo parked off main → AUTO-FIX (atomic rescue) + ping
 # The ledger-PR and eval-death watches stay armed permanently; the sweep
 # transition fires once.
@@ -58,18 +60,23 @@ fi
 stset eval_alive "$eval_alive"
 
 # --- 4: ledger-PR staleness ---
+# Compare against the COMMITTED main ledger, never the working tree: branch
+# operations leave stale/conflicted ledgers in the tree and the monitor
+# fired through them every sweep (2026-10-01 ping storm). Gated on state:
+# ping once per episode; a resolved episode re-arms.
 lap=$(mktemp)
 if scp -q llm-jk:/home/josh/janus/eval_ledger.json "$lap" 2>/dev/null; then
-  if ! cmp -s "$lap" /root/janus/eval_ledger.json 2>/dev/null; then
-    last_commit=$(git -C /root/janus log -1 --format=%ct -- eval_ledger.json 2>/dev/null || echo 0)
-    now=$(date +%s)
-    age=$(( (now - last_commit) / 3600 ))
-    if [ "$age" -ge 6 ]; then
-      tg "⏳ janus: laptop ledger differs from the repo and the last ledger commit is ${age}h old — the metrics PR flow may have stalled silently."
+  git -C /root/janus show main:eval_ledger.json > "$lap.repo" 2>/dev/null
+  if [ -s "$lap.repo" ] && ! cmp -s "$lap" "$lap.repo"; then
+    if [ "$(stget ledger_stale)" != "1" ]; then
+      tg "⏳ janus: laptop ledger differs from the repo's committed ledger — an eval row may be unsynced."
+      stset ledger_stale 1
     fi
+  else
+    [ "$(stget ledger_stale)" = "1" ] && stset ledger_stale 0
   fi
 fi
-rm -f "$lap"
+rm -f "$lap" "$lap.repo" 2>/dev/null
 
 # --- 5: repo parked off main → auto-fix ---
 branch=$(git -C /root/janus branch --show-current 2>/dev/null)
