@@ -11,6 +11,11 @@ STAMP=$(date +%Y%m%d-%H%M)
 
 # Single-flight lock: a manual probing run and the cron run must never
 # fight the same single-slot llama-server (2026-09-27 rank-probe collision).
+# Manual-launch pattern (2026-09-30 flock lesson): flock must hold the lock
+# for the eval's lifetime —
+#   nohup flock "$LOGS/.eval.lock" -c "env ... eval.py ... > log 2>&1" &
+# never `flock ... -c "nohup eval ... &"` — the inner & releases the lock when
+# the wrapper shell exits, and the eval runs outside single-flight.
 LOCK="$LOGS/.eval.lock"
 exec 9>"$LOCK"
 if ! flock -n 9; then
@@ -46,8 +51,17 @@ if [ "$AVAIL_MB" -lt "${DOGFOOD_MIN_FREE_MB:-2500}" ]; then
 fi
 
 cd "$HERE"
+# Nightly corpus scope: janus fixtures only. eval_corpus/external/ (mined
+# fixtures) fails on the janus venv's pinned pydantic-core, and
+# eval_corpus/external_raw/ holds 891 raw mined fixtures — the corpus rglob
+# catches both (2026-09-30 nightly ran ~18h to a contaminated 53-fixture
+# row). Copy to a tempdir minus both.
+NIGHTLY_CORPUS=$(mktemp -d /tmp/janus-nightly-XXXXXX)
+trap 'rm -rf "$NIGHTLY_CORPUS"' EXIT
+rsync -a --exclude=external/ --exclude=external_raw/ --exclude=finetune.jsonl \
+  eval_corpus/ "$NIGHTLY_CORPUS"/
 nice -n 19 .venv/bin/python dev/eval.py \
-  --corpus eval_corpus --md "$LOGS/dogfood-$STAMP.md" --json "$LOGS/dogfood-$STAMP.json" "$@"
+  --corpus "$NIGHTLY_CORPUS" --md "$LOGS/dogfood-$STAMP.md" --json "$LOGS/dogfood-$STAMP.json" "$@"
 code=$?
 # accumulate fine-tuning corpus from the run (cheap, label-rich)
 nice -n 19 .venv/bin/python dev/build_finetune_corpus.py >> "$LOGS/cron.log" 2>&1 || true

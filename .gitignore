@@ -10,3 +10,4 @@ dist/
 .coverage
 uv.lock
 logs/
+eval_corpus/external_raw/
