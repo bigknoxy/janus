@@ -72,7 +72,21 @@ def test_orchestrator_governor_saturates_cleanly(tmp_path):
         s2=_StubS2(), runner=None, settings=settings,
     )
     import unittest.mock as mock
-    with mock.patch("janus.core.governor._proc_loadavg", return_value=9.9):
+
+    from janus.core.governor import LoadSaturatedError
+
+    class _SaturatedGovernor:
+        def __init__(self, *args, **kwargs) -> None: ...
+
+        def wait(self, clock: object | None = None) -> None:
+            raise LoadSaturatedError("load 9.9 >= 0.5 for > 0s")
+
+    # The governor's read_load default binds _proc_loadavg at import time —
+    # patching the module attribute never reaches it (CI-flake root cause:
+    # idle runners read load < 0.5 and never saturate). Patch the class:
+    # the target here is the orchestrator's clean-exit path, not the
+    # governor's own saturation logic (covered by the fake-clock tests).
+    with mock.patch("janus.core.orchestrator.LoadGovernor", _SaturatedGovernor):
         rep = orch.run_modify(
             orch._s1.evaluate("fix mod.py", "mod.py :: add"), str(tmp_path)
         )
