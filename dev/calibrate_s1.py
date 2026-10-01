@@ -67,22 +67,65 @@ def sig(x: float) -> float:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", type=Path, default=Path(__file__).parent / "calibration.json")
+    ap.add_argument(
+        "--corpus", type=Path, default=None,
+        help="external fixture dir — its prompts (repo-map summaries built the\n"
+        "same way the eval builds them) join the probe set, gold=modification",
+    )
+    ap.add_argument(
+        "--serve-url", default=None,
+        help="S1 HTTP backend (e.g. Ollama http://localhost:11434);\n"
+        "default = in-process Laya checkpoint",
+    )
+    ap.add_argument("--subfolder", default=None, help="S1 model subfolder for the HTTP backend")
     args = ap.parse_args()
 
     random.seed(0)
+    from janus.context.repo_map import repo_map
     from janus.core.config import JanusSettings
     from janus.system1.laya_engine import LayaDecisionEngine
     from janus.system1.schemas import intent_questions
 
-    engine = LayaDecisionEngine(JanusSettings())
+    settings = JanusSettings()
+    if args.serve_url:
+        settings = JanusSettings(s1_serve_url=args.serve_url, s1_subfolder=args.subfolder)
+    engine = LayaDecisionEngine(settings)
+
+    def predict_raw(state: dict, questions: dict) -> dict:
+        # raw nouls — bypass the gate; the calibration fits the T on the
+        # unscaled scores the same way the engine will read them
+        if engine._agent is not None:
+            return engine._agent.predict(state, questions)
+        return engine._predict_http(state, questions)
+
+    # (prompt, gold, repo_summary) — the janus probes share REPO; external
+    # fixtures get a repo-map summary built from their materialized files
+    probes: list[tuple[str, str | None, str]] = [(p, g, REPO) for p, g in PROBES]
+    n_external = 0
+    if args.corpus:
+        import tempfile
+
+        for fx_path in sorted(Path(args.corpus).glob("*.json")):
+            fixture = json.loads(fx_path.read_text())
+            with tempfile.TemporaryDirectory() as td:
+                for rel, content in {**fixture["files"], **fixture["tests"]}.items():
+                    fp = Path(td) / rel
+                    fp.parent.mkdir(parents=True, exist_ok=True)
+                    fp.write_text(content)
+                repo = repo_map(td)
+            probes.append((fixture["prompt"], "intent:code_modification", repo))
+            n_external += 1
+
     raw: list[dict] = []
-    for prompt, gold in PROBES:
-        result = engine._agent.predict({"request": prompt, "repository": REPO}, intent_questions())
+    for prompt, gold, repo in probes:
+        result = predict_raw({"request": prompt, "repository": repo}, intent_questions())
         scores = {k: float(a["noul"]) for k, a in result["answers"].items()}
-        raw.append({"prompt": prompt, "gold": gold, "scores": scores})
+        is_ext = gold == "intent:code_modification" and repo != REPO
+        raw.append({"prompt": prompt, "gold": gold, "scores": scores,
+                    "external": bool(n_external and is_ext)})
         parts = " ".join(f"{k.split(chr(58))[1][:6]}={v:.2f}" for k, v in scores.items())
-        label = gold if gold else 'AMBIG'
-        print(f'  {label:>26} | {parts}')
+        label = ("EXT" if raw[-1]["external"] else "") + (gold if gold else "AMBIG")
+        print(f'  {label:>30} | {parts}')
 
     def route(scores: dict, temp: float):
         scaled = {k: sig(logit(v) / temp) for k, v in scores.items()}
@@ -119,6 +162,31 @@ def main() -> None:
         if row["gold"] is None and top_cal == "intent:code_modification":
             unsafe_after += 1
 
+    # the REAL metric: the gate's escalation rate on the raw vs scaled
+    # scores — the argmax never moves; the confidence+margin do
+    def route_scores(scores: dict, temp: float) -> dict:
+        return {k: sig(logit(v) / temp) for k, v in scores.items()}
+
+    def gate_escalates(scores: dict, threshold: float, floor: float) -> bool:
+        ranked = sorted(scores, key=scores.get, reverse=True)  # type: ignore[arg-type]
+        top = scores[ranked[0]]
+        margin = top - scores[ranked[1]] if len(ranked) >= 2 else 1.0
+        return top < threshold or margin < floor
+
+    threshold = settings.confidence_threshold
+    floor = getattr(settings, "s1_margin_floor", 0.04)
+    for label, pred in (("all", None), ("external", True), ("janus", False)):
+        subset = [r for r in raw if pred is None or r["external"] == pred]
+        if not subset:
+            continue
+        esc_before = sum(
+            gate_escalates(r["scores"], threshold, floor) for r in subset)
+        esc_after = sum(
+            gate_escalates(route_scores(r["scores"], best_t), threshold, floor)
+            for r in subset)
+        print(f"  gate escalation [{label:>8}]: "
+              f"{esc_before}/{len(subset)} -> {esc_after}/{len(subset)}")
+
     out = {
         "fitted_temperature": best_t,
         "bce_before": round(bce(raw, 1.0), 4),
@@ -127,6 +195,8 @@ def main() -> None:
         "route_accuracy_after": correct_after / len(raw),
         "unsafe_modify_after": unsafe_after,
         "n_probes": len(raw),
+        "n_external": n_external,
+        "backend": args.serve_url or "in-process-laya",
     }
     args.out.write_text(json.dumps(out, indent=2))
     print("\ncalibration:", json.dumps(out, indent=1))
