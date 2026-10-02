@@ -144,11 +144,53 @@ def main() -> None:
                 n += 1
         return loss / max(n, 1)
 
-    best_t, best_loss = 1.0, None
+    # the gate's inputs: the escalation-rate helpers + thresholds — needed
+    # by both the fit's objective and the report below
+    def route_scores(scores: dict, temp: float) -> dict:
+        return {k: sig(logit(v) / temp) for k, v in scores.items()}
+
+    def gate_escalates(scores: dict, threshold: float, floor: float) -> bool:
+        ranked = sorted(scores, key=scores.get, reverse=True)  # type: ignore[arg-type]
+        top = scores[ranked[0]]
+        margin = top - scores[ranked[1]] if len(ranked) >= 2 else 1.0
+        return top < threshold or margin < floor
+
+    threshold = settings.confidence_threshold
+    floor = getattr(settings, "s1_margin_floor", 0.04)
+
+    # Objective (2026-10-01, the BCE lesson): the fit's objective must be
+    # the GATE's objective, not prediction loss. The BCE fit picked the
+    # range's flattest edge (T=2.0) and pushed every prompt under the
+    # threshold (41/41 escalated). New objective: minimize the escalation
+    # rate + a heavy unsafe penalty, subject to the route accuracy not
+    # degrading (invariant under T>0, but asserted honestly).
+    acc_before = sum(
+        route(r["scores"], 1.0) == (r["gold"] or "intent:escalate") for r in raw
+    ) / len(raw)
+
+    def unsafe_rate(temp: float) -> float:
+        amb = [r for r in raw if r["gold"] is None]
+        if not amb:
+            return 0.0
+        bad = sum(
+            1 for r in amb if route(r["scores"], temp) == "intent:code_modification"
+        )
+        return bad / len(amb)
+
+    best_t, best_obj = 1.0, None
     for t in [x / 100 for x in range(30, 201, 2)]:
-        loss = bce(raw, t)
-        if best_loss is None or loss < best_loss:
-            best_t, best_loss = t, loss
+        acc = sum(
+            route(r["scores"], t) == (r["gold"] or "intent:escalate") for r in raw
+        ) / len(raw)
+        if acc < acc_before - 1e-9:
+            continue
+        esc = sum(
+            gate_escalates(route_scores(r["scores"], t), threshold, floor)
+            for r in raw
+        ) / len(raw)
+        obj = esc + 5.0 * unsafe_rate(t)
+        if best_obj is None or obj < best_obj:
+            best_t, best_obj = t, obj
 
     correct_before = correct_after = 0
     unsafe_after = 0
@@ -164,17 +206,6 @@ def main() -> None:
 
     # the REAL metric: the gate's escalation rate on the raw vs scaled
     # scores — the argmax never moves; the confidence+margin do
-    def route_scores(scores: dict, temp: float) -> dict:
-        return {k: sig(logit(v) / temp) for k, v in scores.items()}
-
-    def gate_escalates(scores: dict, threshold: float, floor: float) -> bool:
-        ranked = sorted(scores, key=scores.get, reverse=True)  # type: ignore[arg-type]
-        top = scores[ranked[0]]
-        margin = top - scores[ranked[1]] if len(ranked) >= 2 else 1.0
-        return top < threshold or margin < floor
-
-    threshold = settings.confidence_threshold
-    floor = getattr(settings, "s1_margin_floor", 0.04)
     for label, pred in (("all", None), ("external", True), ("janus", False)):
         subset = [r for r in raw if pred is None or r["external"] == pred]
         if not subset:
@@ -189,8 +220,9 @@ def main() -> None:
 
     out = {
         "fitted_temperature": best_t,
+        "objective": round(best_obj, 4) if best_obj is not None else None,
         "bce_before": round(bce(raw, 1.0), 4),
-        "bce_after": round(best_loss, 4),
+        "bce_after": round(bce(raw, best_t), 4),
         "route_accuracy_before": correct_before / len(raw),
         "route_accuracy_after": correct_after / len(raw),
         "unsafe_modify_after": unsafe_after,
