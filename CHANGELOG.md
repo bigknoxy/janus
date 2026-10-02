@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.11.0](https://github.com/bigknoxy/janus/compare/v0.10.0...v0.11.0) (2026-10-02)
+
+
+### Features
+
+* complete the S1 calibration mechanism — consumption + external-corpus mode ([#67](https://github.com/bigknoxy/janus/issues/67)) ([4678bfd](https://github.com/bigknoxy/janus/commit/4678bfda8a60b80b6d9e1aad23bd32c98fc7fd22))
+
+
+### Bug Fixes
+
+* calibrate_s1 fits the gate's objective, not prediction loss ([#69](https://github.com/bigknoxy/janus/issues/69)) ([d2f6eb3](https://github.com/bigknoxy/janus/commit/d2f6eb3c8365b46331ca1dad6aae4c6d40316735))
+* load-saturated runs exit clean, originals restored ([#48](https://github.com/bigknoxy/janus/issues/48)) ([80d34b2](https://github.com/bigknoxy/janus/commit/80d34b2486c43ce80aa416b228f2a6ceb8340658))
+* monitor ledger watch compares the committed ledger, pings once per episode ([#68](https://github.com/bigknoxy/janus/issues/68)) ([5a3c7e0](https://github.com/bigknoxy/janus/commit/5a3c7e08c84fcd623f8ac5baae6980db9c340cb3))
+
+
+### Documentation
+
+* calibrate_s1 docstring describes the gate's objective and the HTTP/corpus usage ([#70](https://github.com/bigknoxy/janus/issues/70)) ([e371d44](https://github.com/bigknoxy/janus/commit/e371d4427e9ba727d5fc6898183b75d942e16ecc))
+* external RESULTS — the escalation is structural, not a decider artifact ([#64](https://github.com/bigknoxy/janus/issues/64)) ([bba53de](https://github.com/bigknoxy/janus/commit/bba53de18409e96b55b33d5df01322372c871043))
+
 ## [0.10.0](https://github.com/bigknoxy/janus/compare/v0.9.0...v0.10.0) (2026-10-01)
 
 
