@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.11.1](https://github.com/bigknoxy/janus/compare/v0.11.0...v0.11.1) (2026-10-02)
+
+
+### Bug Fixes
+
+* doctor detects the HTTP S1 backend before requiring the laya package ([#74](https://github.com/bigknoxy/janus/issues/74)) ([0050434](https://github.com/bigknoxy/janus/commit/0050434fd34d8002660d426a1a83a1d8f8619430))
+* verification runner routes bare pytest through janus's interpreter ([#73](https://github.com/bigknoxy/janus/issues/73)) ([67ad19b](https://github.com/bigknoxy/janus/commit/67ad19b230f2c7c19422a3fc747d576f10bb3ea8))
+
+
+### Documentation
+
+* sync with the calibration's story — mechanism, workflow, verdict ([#71](https://github.com/bigknoxy/janus/issues/71)) ([05fd1b0](https://github.com/bigknoxy/janus/commit/05fd1b01bbdf6da5cec292fb7e824d77812860cd))
+
 ## [0.11.0](https://github.com/bigknoxy/janus/compare/v0.10.0...v0.11.0) (2026-10-02)
 
 
