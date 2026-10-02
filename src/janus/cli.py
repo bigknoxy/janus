@@ -130,10 +130,20 @@ def doctor(
     table.add_column("detail")
 
     # System 1
-    if settings.s1_backend == "laya":
+    if settings.s1_serve_url:
+        try:
+            import httpx
+            url = settings.s1_serve_url.rstrip('/')
+            resp = httpx.get(url, timeout=5.0)
+            if resp.status_code == 200:
+                table.add_row("system1 (HTTP)", "✅", f"reachable: {url}")
+            else:
+                table.add_row("system1 (HTTP)", "❌", f"HTTP error {resp.status_code}")
+        except Exception as e:
+            table.add_row("system1 (HTTP)", "❌", str(e)[:80])
+    elif settings.s1_backend == "laya":
         try:
             import laya  # noqa: F401
-
             table.add_row("system1 (laya)", "✅", f"installed ({laya.__name__})")
         except ImportError:
             table.add_row("system1 (laya)", "❌", "pip install janus-code[laya]")
