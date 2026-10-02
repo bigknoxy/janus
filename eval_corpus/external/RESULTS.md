@@ -29,8 +29,18 @@ scoping, parametrized-id-safe filenames).
   different model, 0.7s warm vs ~29s, one external probe PASSED at conf
   0.946) reproduces the same 20/20 ESCALATE on the full arm. The gate's
   margin logic on foreign prompts is the cause, not the Laya checkpoint.
-  An S1 *calibration* run (retraining the margin on external prompts) is
-  the remaining lever; a decider swap alone does not move it.
+  A decider swap alone does not move it.
+- **The calibration opened the door (2026-10-02)**: the nouls on foreign
+  prompts are IDENTICAL (0.84 confidence, uniform posture — a 0.01 miss
+  under the 0.85 threshold, routing RIGHT). The BCE-objective fit failed
+  (picked the flattest T, escalated everything 41/41); the fixed
+  objective — minimize the gate's escalation rate + an unsafe penalty,
+  subject to route accuracy — fitted **T=0.74**: gate escalation
+  32/41 → 12/41, **external 19/20 → 0/20**, route accuracy identical
+  (0.878, argmax invariant as designed), unsafe unchanged at 1 (the
+  model's raw argmax on one ambiguous prompt — the engine's anchor rule
+  escalates it deterministically). The external escalation is now
+  calibrated away; the claim re-test runs with the calibration deployed.
 
 ## Verdict
 
@@ -38,6 +48,8 @@ The claim "fixes bugs from real histories" **does NOT extend to external
 repos at 4B** — it stays janus-scoped. Per the falsifier exit, that is
 documented here rather than shipped as a claim. The tooling (miner,
 `--python` flag, fixture venv route, event monitor) ships and works;
-the corpus stays as infrastructure for a future era: an S1 calibration
-run on external prompts, and a stronger S2 tier (Kaggle corpus curation,
-CLM-8B verifier) before the claim is re-tested.
+the corpus stays as infrastructure. **The calibration (T=0.74, measured
+2026-10-02) takes external gate escalations from 19/20 to 0/20** — the
+remaining levers for the claim re-test: the external eval WITH the
+calibration deployed, and a stronger S2 tier (Kaggle corpus curation,
+CLM-8B verifier).

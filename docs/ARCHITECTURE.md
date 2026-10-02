@@ -76,3 +76,17 @@ Measured on the laptop: tev1:0.8b classifies correctly at 0.7 s warm per
 decision (vs ~29 s in-process) with real top1−top2 probability gaps —
 which means the anchor rule and margin floor finally operate on a true
 distribution rather than a parsed guess.
+
+## S1 calibration (2026-10-02)
+
+Foreign prompts hedge their nouls near 0.5 with thin margins — the gate
+escalated 19/20 of them even though the argmax (code_modification) was
+RIGHT every time. The mechanism: a fitted domain temperature
+(`dev/calibration.json`, applied per decision by the engine) sharpens
+the confidence and margin the gate reads. `sig(logit(p)/T)` is monotonic
+for T>0, so the argmax — the routing — is INVARIANT; only the numbers
+the gate reads move. Fitted on the gate's objective (escalation rate +
+unsafe penalty, not prediction loss): T=0.74 drops the gate's escalation
+32/41 → 12/41, takes external escalations to **0/20**, and leaves route
+accuracy identical (0.878). The door is open; the re-test of the
+external claim runs with the calibration deployed.
