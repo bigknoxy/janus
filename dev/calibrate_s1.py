@@ -2,12 +2,22 @@
 """Domain temperature fitting for System 1 (Laya nouls).
 
 Static per-question temperature scaling on the intent nouls. Fits a scalar
-T minimizing binary log-loss on a labeled probe corpus, then re-runs the
-gate to measure routing accuracy before/after. Produces
+T against the GATE's objective (2026-10-01: minimize the escalation rate
+plus a heavy unsafe-routing penalty, subject to the route accuracy not
+degrading — the argmax is invariant under T>0), then re-runs the gate to
+measure routing accuracy and escalation before/after. Produces
 dev/calibration.json consumed by LayaDecisionEngine (if present).
 
 Run on a box with the checkpoint:
     python dev/calibrate_s1.py [--out dev/calibration.json]
+
+or against an HTTP S1 backend (no checkpoint needed):
+    python dev/calibrate_s1.py --serve-url http://localhost:11434 \
+        --subfolder tev1:0.8b [--corpus eval_corpus/external]
+
+--corpus joins an external fixture dir's prompts to the probe set
+(gold=modification, repo-map summaries built the same way the eval builds
+them) so the fit sees the foreign-prompt distribution the gate must route.
 """
 
 import argparse
