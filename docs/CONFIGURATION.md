@@ -21,6 +21,29 @@ working directory). Sensible defaults target a local Ollama-style endpoint.
 | `JANUS_VERIFY_TIMEOUT_S` | `120` | verification timeout |
 | `JANUS_MAX_REPAIR_ATTEMPTS` | `1` | repair-loop attempts (0–3) |
 
+## S1 calibration (the per-box artifact)
+
+The gate reads two numbers — confidence (threshold 0.85) and top1−top2
+margin (floor 0.04). A fitted domain temperature sharpens those numbers
+without ever moving the argmax: `sig(logit(p)/T)` is monotonic for T>0,
+so the routing is INVARIANT and only the confidence/margin the gate reads
+shift. The fit minimizes the **gate's objective** — the escalation rate
+plus a heavy unsafe-routing penalty, subject to route accuracy — not
+prediction loss (the BCE fit picked the flattest T and escalated
+everything; measured 2026-10-01).
+
+- The engine applies the fit **per decision** when `dev/calibration.json`
+  is present: missing file, bad JSON, or T==1 → scores unchanged.
+  Zero-downtime: the file's appearance takes effect immediately.
+- The artifact is **per-box and gitignored** — present only where fitted.
+  A stale one silently poisons clean comparisons (measured 2026-10-02):
+  check the artifact layer before trusting an eval run.
+- Fit it with `dev/calibrate_s1.py` — in-process (checkpoint box) or via
+  an HTTP backend, optionally `--corpus eval_corpus/external` so the fit
+  sees the foreign-prompt distribution the gate must route. Measured on
+  the laptop with the Ollama backend: fitted T=0.74, gate escalation
+  32/41 → 12/41, **external 19/20 → 0/20**, route accuracy identical.
+
 ## Laptop posture (the reference rig)
 
 A 2-core, 14 GiB laptop serves both faces: Laya on CPU (~808 MB checkpoint,
