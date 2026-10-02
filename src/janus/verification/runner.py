@@ -3,6 +3,7 @@ a hard timeout, always returning a typed VerificationResult (never raising
 for a failing command — failure IS the data)."""
 
 import subprocess
+import sys
 
 from janus.core.config import JanusSettings
 from janus.core.types import VerificationResult
@@ -14,6 +15,12 @@ class VerificationRunner:
 
     def run(self, cwd: str, command: str | None = None) -> VerificationResult:
         cmd = command or self._settings.verify_command
+        # A bare `pytest` resolves against the inherited PATH, which misses a
+        # venv-installed janus (the venv's bin/ is not on PATH unless the
+        # caller activated it — measured in real use, 2026-10-02). Route it
+        # through the interpreter janus itself runs under.
+        if cmd.split()[0] == "pytest":
+            cmd = f"'{sys.executable}' -m {cmd}"
         try:
             proc = subprocess.run(
                 cmd,
