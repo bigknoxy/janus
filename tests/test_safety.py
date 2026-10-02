@@ -178,3 +178,12 @@ class TestRepairLoopTransparency:
                 System1Decision(target_files=["mod.py"], **MODIFY), str(tmp_path)
             )
         monkeypatch.undo()
+
+    def test_bare_pytest_routed_through_janus_interpreter(self, tmp_path: Path):
+        """Real-use finding (2026-10-02): a bare `pytest` resolves against the
+        inherited PATH and misses a venv-installed janus (the venv's bin/ is
+        not on PATH unless the caller activated it). The runner must route it
+        through the interpreter janus itself runs under."""
+        runner = VerificationRunner(JanusSettings(verify_command="pytest --version"))
+        result = runner.run(cwd=str(tmp_path))
+        assert result.passed, f"runner lost pytest: {result.stderr}"
