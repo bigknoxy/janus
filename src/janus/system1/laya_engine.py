@@ -151,6 +151,7 @@ class LayaDecisionEngine:
             for key, ans in answers.items()
             if key.startswith("intent:")
         }
+        raw_scores = dict(scores)  # the S1's own output, before any transform
         scores = _apply_calibration(scores)
         try:
             ranked_intents = sorted(scores, key=scores.get, reverse=True)  # type: ignore[arg-type]
@@ -158,8 +159,16 @@ class LayaDecisionEngine:
         except (IndexError, ValueError):
             intent, scores, ranked_intents = IntentType.UNCLEAR_ESCALATE, {}, []
         confidence = min(max(scores.get(intent, 0.0), 0.0), 1.0)
+        # Dogfood 2026-10-07: the calibration's sharpening COMPRESSES
+        # upper-plateau margins (both top scores saturate toward 1), so the
+        # same S1 response flips from pass to escalate purely through the
+        # transform — an artifact, not new information. The margin floor
+        # (0.04) is calibrated for the raw scale, so it reads the RAW margin:
+        # the S1's own uncertainty signal. Confidence stays calibrated —
+        # lifting it over the threshold is the calibration's purpose.
+        # (sig(logit(p)/T) is monotonic, so the ranking is identical.)
         margin = (
-            scores[ranked_intents[0]] - scores[ranked_intents[1]]
+            raw_scores[ranked_intents[0]] - raw_scores[ranked_intents[1]]
             if len(ranked_intents) >= 2
             else 1.0
         )
