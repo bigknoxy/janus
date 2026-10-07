@@ -159,10 +159,15 @@ def main() -> None:
     def route_scores(scores: dict, temp: float) -> dict:
         return {k: sig(logit(v) / temp) for k, v in scores.items()}
 
-    def gate_escalates(scores: dict, threshold: float, floor: float) -> bool:
+    def gate_escalates(scores: dict, raw: dict, threshold: float, floor: float) -> bool:
         ranked = sorted(scores, key=scores.get, reverse=True)  # type: ignore[arg-type]
         top = scores[ranked[0]]
-        margin = top - scores[ranked[1]] if len(ranked) >= 2 else 1.0
+        # Dogfood 2026-10-07: the margin floor reads the RAW margin — the
+        # calibration's sharpening compresses upper-plateau margins (an
+        # artifact of the transform, not new information), so the same S1
+        # response must not flip verdicts through the transform. The engine
+        # does the same: confidence calibrated, margin raw.
+        margin = raw[ranked[0]] - raw[ranked[1]] if len(ranked) >= 2 else 1.0
         return top < threshold or margin < floor
 
     threshold = settings.confidence_threshold
@@ -195,7 +200,7 @@ def main() -> None:
         if acc < acc_before - 1e-9:
             continue
         esc = sum(
-            gate_escalates(route_scores(r["scores"], t), threshold, floor)
+            gate_escalates(route_scores(r["scores"], t), r["scores"], threshold, floor)
             for r in raw
         ) / len(raw)
         obj = esc + 5.0 * unsafe_rate(t)
