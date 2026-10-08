@@ -15,7 +15,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from janus.context.ast_pruner import extract_symbol, mentioned_symbols
+from janus.context.ast_pruner import extract_symbol, mentioned_symbols, symbol_names
 from janus.core.config import JanusSettings
 from janus.core.governor import LoadGovernor, LoadSaturatedError
 from janus.core.types import (
@@ -270,6 +270,27 @@ class PipelineOrchestrator:
             elif len(source) < 12_000:
                 # Small file: whole-file slice is the honest context.
                 slices[rel] = source
+            else:
+                # Big file with no verbatim symbol: whole-file exceeds the
+                # S2's context budget, symbol-less extraction starves the
+                # repair. Extract the file's top-level symbols and let the
+                # S1 arbitrate which earns the slice — the same noul
+                # treatment file targeting already gets. (Dogfood
+                # 2026-10-08: external fixtures point at click's
+                # _termui_impl.py, way over 12K, prompts name no symbol
+                # verbatim → zero slices → ESCALATE.)
+                lang = "javascript" if rel.endswith((".js", ".mjs", ".ts")) else "python"
+                cands: list[tuple[str, str]] = []
+                for name in symbol_names(source, lang):
+                    slice_ = extract_symbol(source, name, language=lang)
+                    if slice_ is not None:
+                        cands.append((name, slice_))
+                if cands:
+                    ranked = self._s1.rank_patches(
+                        decision.micro_instruction,
+                        [f"{name}:\n{text[:800]}" for name, text in cands],
+                    )
+                    slices[rel] = cands[ranked[0]][1]
         return slices
 
     def _apply_and_write(
