@@ -226,9 +226,9 @@ def main() -> None:
         if not subset:
             continue
         esc_before = sum(
-            gate_escalates(r["scores"], threshold, floor) for r in subset)
+            gate_escalates(r["scores"], r["scores"], threshold, floor) for r in subset)
         esc_after = sum(
-            gate_escalates(route_scores(r["scores"], best_t), threshold, floor)
+            gate_escalates(route_scores(r["scores"], best_t), r["scores"], threshold, floor)
             for r in subset)
         print(f"  gate escalation [{label:>8}]: "
               f"{esc_before}/{len(subset)} -> {esc_after}/{len(subset)}")
