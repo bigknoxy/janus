@@ -39,3 +39,7 @@ class MockDecisionEngine:
             requires_s2=intent == IntentType.CODE_MODIFICATION,
         )
         return enforce_confidence_gate(decision, self._settings.confidence_threshold)
+
+    def rank_patches(self, instruction: str, candidates: list[str]) -> list[int]:
+        """Mock has no ranker: identity order (first-candidate-wins)."""
+        return list(range(len(candidates)))

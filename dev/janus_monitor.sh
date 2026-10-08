@@ -65,7 +65,11 @@ stset eval_alive "$eval_alive"
 # fired through them every sweep (2026-10-01 ping storm). Gated on state:
 # ping once per episode; a resolved episode re-arms.
 lap=$(mktemp)
-if scp -q llm-jk:/home/josh/janus/eval_ledger.json "$lap" 2>/dev/null; then
+# The laptop's COMMITTED ledger, never the working tree (the scp of the
+# tree file was the 2026-10-08 false alarm: the working tree holds an
+# eval row the moment a run finishes — same class as the 2026-10-01
+# branch ping-pong; the comment already said this, the code didn't).
+if ssh -o ConnectTimeout=15 llm-jk 'git -C /home/josh/janus show main:eval_ledger.json' > "$lap" 2>/dev/null && [ -s "$lap" ]; then
   git -C /root/janus show main:eval_ledger.json > "$lap.repo" 2>/dev/null
   if [ -s "$lap.repo" ] && ! cmp -s "$lap" "$lap.repo"; then
     if [ "$(stget ledger_stale)" != "1" ]; then
@@ -77,6 +81,20 @@ if scp -q llm-jk:/home/josh/janus/eval_ledger.json "$lap" 2>/dev/null; then
   fi
 fi
 rm -f "$lap" "$lap.repo" 2>/dev/null
+
+# --- 4b: laptop git frozen (rsync excludes .git) → auto-fix ---
+# The rsync syncs code but not .git, so the laptop's main drifts to
+# whatever commit it was cloned at while its working tree stays current
+# — the committed ledger then never advances and every diff-based check
+# reads a stale baseline (2026-10-08: laptop main at the #67 era).
+if ! ssh -o ConnectTimeout=15 llm-jk 'git -C /home/josh/janus fetch -q origin && git -C /home/josh/janus merge --ff-only -q origin/main' >/dev/null 2>&1; then
+  if [ "$(stget laptop_git_frozen)" != "1" ]; then
+    tg "🔧 janus: laptop git rescue failed — working tree and committed state may disagree."
+    stset laptop_git_frozen 1
+  fi
+else
+  [ "$(stget laptop_git_frozen)" = "1" ] && stset laptop_git_frozen 0
+fi
 
 # --- 5: repo parked off main → auto-fix ---
 branch=$(git -C /root/janus branch --show-current 2>/dev/null)

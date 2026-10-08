@@ -187,3 +187,48 @@ class TestRepairLoopTransparency:
         runner = VerificationRunner(JanusSettings(verify_command="pytest --version"))
         result = runner.run(cwd=str(tmp_path))
         assert result.passed, f"runner lost pytest: {result.stderr}"
+
+
+class TestBigFileSlicing:
+    def test_big_file_sliced_by_ranked_symbol(self, tmp_path: Path):
+        """Dogfood 2026-10-08: a big file (>12K chars) with no verbatim
+        symbol got ZERO slices and ESCALATE'd — the whole-file rule only
+        covered <12K. The big-file path now extracts top-level symbols and
+        lets the S1 arbitrate by noul; the top-ranked symbol's slice is
+        the S2's context (mock has no ranker → identity order → first
+        candidate wins, same doctrine as patch ranking)."""
+        body = "    x = 1\n" * 900  # 900 lines * 10 chars = 9K per function
+        (tmp_path / "mod.py").write_text(
+            f"def broken():\n{body}    return 1\n\n\ndef filler():\n{body}    return 2\n"
+        )
+        assert (tmp_path / "mod.py").stat().st_size > 12_000
+        good = (
+            "file: mod.py\n<<<<<<< SEARCH\n    return 1\n"
+            "=======\n    return 2\n>>>>>>> REPLACE"
+        )
+        settings = JanusSettings(verify_command="true")
+        orch = PipelineOrchestrator(
+            s1=MockDecisionEngine(settings=settings),
+            s2=LocalGenerativeEngine(settings=settings, transport=s2_returning(good)),
+            runner=VerificationRunner(settings),
+            settings=settings,
+        )
+        report = orch.run("fix mod.py: it returns one item too few", str(tmp_path), "mod.py")
+        assert report.status == RunStatus.PATCHED_VERIFIED, report.message
+
+    def test_big_file_without_symbols_still_slices(self, tmp_path: Path):
+        """A big file whose top-level symbols can't be extracted (malformed
+        source) falls back to the first extractable symbol or escalates
+        honestly — never a silent empty slice from the size rule alone."""
+        (tmp_path / "mod.py").write_text("def broken():\n" + "    x = 1\n" * 2000)
+        settings = JanusSettings(verify_command="true")
+        orch = PipelineOrchestrator(
+            s1=MockDecisionEngine(settings=settings),
+            s2=LocalGenerativeEngine(settings=settings, transport=s2_returning("no patch")),
+            runner=VerificationRunner(settings),
+            settings=settings,
+        )
+        # Slices exist (extractable symbols) → the S2's failed patch →
+        # FAILED_ROLLED_BACK, NOT the slicer's ESCALATE.
+        report = orch.run("fix mod.py: it returns one item too few", str(tmp_path), "mod.py")
+        assert report.status != RunStatus.ESCALATE

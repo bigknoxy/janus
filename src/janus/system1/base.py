@@ -18,6 +18,11 @@ class DecisionEngineProtocol(Protocol):
         uncertainty through the confidence field, not exceptions."""
         ...
 
+    def rank_patches(self, instruction: str, candidates: list[str]) -> list[int]:
+        """Arbitrate candidate order by noul signal (JB-3). Engines without
+        a ranker return identity order — first-candidate-wins doctrine."""
+        ...
+
 
 def enforce_confidence_gate(
     decision: System1Decision,
