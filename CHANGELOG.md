@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.11.2](https://github.com/bigknoxy/janus/compare/v0.11.1...v0.11.2) (2026-10-08)
+
+
+### Bug Fixes
+
+* margin floor reads the RAW margin, not the calibrated one ([#75](https://github.com/bigknoxy/janus/issues/75)) ([0a82575](https://github.com/bigknoxy/janus/commit/0a8257512a5b2e576114ab89d612ad168c14c4f7))
+* second gate_escalates call site (report section) passes raw scores ([db1da3f](https://github.com/bigknoxy/janus/commit/db1da3f870461e3b24c3f506b911965ec38ea490))
+
 ## [0.11.1](https://github.com/bigknoxy/janus/compare/v0.11.0...v0.11.1) (2026-10-02)
 
 
