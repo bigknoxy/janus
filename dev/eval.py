@@ -90,6 +90,10 @@ class _ForceModify:
             requires_s2=True,
         )
 
+    def rank_patches(self, instruction: str, candidates: list[str]) -> list[int]:
+        """Ablation has no ranker: identity order (first-candidate-wins)."""
+        return list(range(len(candidates)))
+
 
 _S1_CACHE: dict[str, object] = {}
 
