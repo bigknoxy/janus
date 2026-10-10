@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.12.0](https://github.com/bigknoxy/janus/compare/v0.11.2...v0.12.0) (2026-10-10)
+
+
+### Features
+
+* big-file slicing — S1-ranked symbols when no verbatim anchor ([#77](https://github.com/bigknoxy/janus/issues/77)) ([e889809](https://github.com/bigknoxy/janus/commit/e8898099bd2f76d29836db679f19357fb71e47c4))
+* cap the total slice context to the S2's prompt budget ([#81](https://github.com/bigknoxy/janus/issues/81)) ([58f6f6a](https://github.com/bigknoxy/janus/commit/58f6f6a9a459daff6eb5761cda4b3d4005dd6ad6))
+
+
+### Bug Fixes
+
+* no-gate ablation gains the rank_patches stub ([#79](https://github.com/bigknoxy/janus/issues/79)) ([11ccd1f](https://github.com/bigknoxy/janus/commit/11ccd1f67606f97466d71d395f6ccfb5f5eb465e))
+
 ## [0.11.2](https://github.com/bigknoxy/janus/compare/v0.11.1...v0.11.2) (2026-10-08)
 
 
