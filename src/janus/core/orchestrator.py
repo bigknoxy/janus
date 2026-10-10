@@ -86,6 +86,32 @@ class RunReport(BaseModel):
     arbitration: dict | None = None  # JB-3: {candidates, chosen, scores} when S1 ranked
 
 
+def _fit_slices(slices: dict[str, str], budget_chars: int = 40_000) -> dict[str, str]:
+    """Cap the total slice context to the S2's prompt budget.
+
+    Dogfood 2026-10-10: the no-gate ablation's repair prompt hit 16,805
+    tokens against the llama-server's 16,384-token context → 400 Bad
+    Request. Same failure class as the S1 decider's 2050-token limit —
+    the context budget is a hard ceiling, so the slices' total must fit
+    it with room for the system prompt and the generation. Per-file
+    budget when over, head+tail kept so signatures and usage survive.
+    """
+    total = sum(len(v) for v in slices.values())
+    if total <= budget_chars:
+        return slices
+    per_file = budget_chars // len(slices)
+    fitted: dict[str, str] = {}
+    for path, code in slices.items():
+        if len(code) <= per_file:
+            fitted[path] = code
+        else:
+            head = per_file * 3 // 4
+            tail = per_file - head
+            marker = "\n...[truncated for context budget]...\n"
+            fitted[path] = code[:head] + marker + code[-tail:]
+    return fitted
+
+
 class PipelineOrchestrator:
     def __init__(
         self,
@@ -135,6 +161,7 @@ class PipelineOrchestrator:
                 decision=decision,
                 message="no matching symbols/files could be sliced; clarify targets",
             )
+        slices = _fit_slices(slices)
 
         originals: dict[str, str | None] = {}  # None = file did not exist
         repair_note: str | None = None
@@ -286,9 +313,15 @@ class PipelineOrchestrator:
                     if slice_ is not None:
                         cands.append((name, slice_))
                 if cands:
+                    # The S1 decider enforces a 1-2050 token prompt limit
+                    # (measured 2026-10-08: 38 questions with code stubs
+                    # = 10.8K tokens -> 400 Bad Request). Cap the field to
+                    # 16 candidates and keep each preview tiny so the rank
+                    # question batch fits the budget.
+                    cands = cands[:16]
                     ranked = self._s1.rank_patches(
                         decision.micro_instruction,
-                        [f"{name}:\n{text[:800]}" for name, text in cands],
+                        [f"{name}:\n{text[:150]}" for name, text in cands],
                     )
                     slices[rel] = cands[ranked[0]][1]
         return slices

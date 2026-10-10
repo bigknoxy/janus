@@ -232,3 +232,21 @@ class TestBigFileSlicing:
         # FAILED_ROLLED_BACK, NOT the slicer's ESCALATE.
         report = orch.run("fix mod.py: it returns one item too few", str(tmp_path), "mod.py")
         assert report.status != RunStatus.ESCALATE
+
+    def test_slice_total_fits_s2_context_budget(self, tmp_path: Path):
+        """Dogfood 2026-10-10: the no-gate ablation's repair prompt hit
+        16,805 tokens against the llama-server's 16,384-token context →
+        400 Bad Request. The S2's prompt budget is a hard ceiling, so the
+        total slice context must be capped to fit it with room for the
+        system prompt and the generation."""
+        from janus.core.orchestrator import _fit_slices
+        big = "x = 1\n" * 20_000
+        slices = {f"f{i}.py": big for i in range(4)}  # 320K chars total
+        fitted = _fit_slices(slices, budget_chars=40_000)
+        total = sum(len(v) for v in fitted.values())
+        assert total <= 41_000, f"slices exceed budget: {total} chars"
+        for path, code in fitted.items():
+            assert "...[truncated for context budget]..." in code, path
+        # under budget: unchanged
+        small = {"a.py": "x = 1\n"}
+        assert _fit_slices(small, budget_chars=40_000) == small
