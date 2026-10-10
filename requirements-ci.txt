@@ -36,7 +36,7 @@ pydantic-settings==2.15.0
     # via janus-code
 pygments==2.21.0
     # via rich
-python-dotenv==1.2.3
+python-dotenv==1.2.4
     # via pydantic-settings
 rich==15.0.0
     # via
@@ -50,7 +50,7 @@ tree-sitter-javascript==0.25.0
     # via janus-code
 tree-sitter-python==0.25.0
     # via janus-code
-typer==0.27.2
+typer==0.27.3
     # via janus-code
 typing-extensions==4.16.0
     # via
