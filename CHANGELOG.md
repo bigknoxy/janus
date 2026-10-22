@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/bigknoxy/janus/compare/v0.12.0...v0.13.0) (2026-10-22)
+
+
+### Features
+
+* Kaggle fine-tune notebook for the S1 intent head ([#83](https://github.com/bigknoxy/janus/issues/83)) ([733cef2](https://github.com/bigknoxy/janus/commit/733cef22b830b08dd7d4f6ee14362452cb7ef279))
+
 ## [0.12.0](https://github.com/bigknoxy/janus/compare/v0.11.2...v0.12.0) (2026-10-10)
 
 
