@@ -1,93 +1,6 @@
 {
   "runs": [
     {
-      "date": "2026-09-26 15:01",
-      "total": 1,
-      "corrupt": 0,
-      "full_pass": 1
-    },
-    {
-      "date": "2026-09-27 04:50",
-      "total": 10,
-      "corrupt": 0,
-      "full_pass": 0,
-      "nogate_pass": 0,
-      "norepair_pass": 0,
-      "note": "infra-contaminated probe: laptop network drop mid-run; not a fair test"
-    },
-    {
-      "date": "2026-09-27 08:06",
-      "total": 33,
-      "corrupt": 0,
-      "full_pass": 8,
-      "nogate_pass": 8,
-      "norepair_pass": 14
-    },
-    {
-      "date": "2026-09-28 06:06",
-      "total": 23,
-      "corrupt": 0,
-      "full_pass": 13,
-      "nogate_pass": 12,
-      "norepair_pass": 11,
-      "gate_saves": 1,
-      "gate_overreaches": 1
-    },
-    {
-      "date": "2026-09-28 19:49",
-      "total": 33,
-      "corrupt": 0,
-      "full_pass": 22,
-      "nogate_pass": 10,
-      "norepair_pass": 16,
-      "gate_saves": 3,
-      "gate_overreaches": 1
-    },
-    {
-      "date": "2026-09-30 21:37",
-      "total": 53,
-      "corrupt": 0,
-      "infra": 0,
-      "full_pass": 16,
-      "nogate_pass": 10,
-      "norepair_pass": 15,
-      "gate_saves": 3,
-      "gate_overreaches": 4
-    },
-    {
-      "date": "2026-10-08 00:47",
-      "total": 20,
-      "corrupt": 0,
-      "infra": 0,
-      "full_pass": 0,
-      "nogate_pass": 0,
-      "norepair_pass": 0,
-      "gate_saves": 0,
-      "gate_overreaches": 0
-    },
-    {
-      "date": "2026-10-08 12:19",
-      "total": 33,
-      "corrupt": 0,
-      "infra": 0,
-      "full_pass": 22,
-      "nogate_pass": 19,
-      "norepair_pass": 18,
-      "gate_saves": 3,
-      "gate_overreaches": 1
-    },
-    {
-      "date": "2026-10-08 12:19",
-      "total": 1,
-      "corrupt": 0,
-      "infra": 3,
-      "full_pass": 0,
-      "nogate_pass": 0,
-      "norepair_pass": 0,
-      "gate_saves": 0,
-      "gate_overreaches": 0
-    },
-    {
       "date": "2026-10-08 19:02",
       "total": 33,
       "corrupt": 0,
@@ -403,6 +316,347 @@
       "norepair_pass": 20,
       "gate_saves": 3,
       "gate_overreaches": 1
+    },
+    {
+      "date": "2026-10-22 21:11",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 22,
+      "nogate_pass": 20,
+      "norepair_pass": 22,
+      "gate_saves": 3,
+      "gate_overreaches": 1
+    },
+    {
+      "date": "2026-10-23 10:32",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 24,
+      "nogate_pass": 20,
+      "norepair_pass": 22,
+      "gate_saves": 3,
+      "gate_overreaches": 1
+    },
+    {
+      "date": "2026-10-23 20:13",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 24,
+      "nogate_pass": 20,
+      "norepair_pass": 22,
+      "gate_saves": 3,
+      "gate_overreaches": 1
+    },
+    {
+      "date": "2026-10-24 10:56",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 24,
+      "nogate_pass": 20,
+      "norepair_pass": 20,
+      "gate_saves": 3,
+      "gate_overreaches": 1
+    },
+    {
+      "date": "2026-10-24 21:06",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 22,
+      "nogate_pass": 20,
+      "norepair_pass": 20,
+      "gate_saves": 3,
+      "gate_overreaches": 1
+    },
+    {
+      "date": "2026-10-25 11:47",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 22,
+      "nogate_pass": 20,
+      "norepair_pass": 20,
+      "gate_saves": 3,
+      "gate_overreaches": 1
+    },
+    {
+      "date": "2026-10-25 21:04",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 22,
+      "nogate_pass": 20,
+      "norepair_pass": 20,
+      "gate_saves": 3,
+      "gate_overreaches": 1
+    },
+    {
+      "date": "2026-10-26 11:49",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 22,
+      "nogate_pass": 20,
+      "norepair_pass": 20,
+      "gate_saves": 3,
+      "gate_overreaches": 1
+    },
+    {
+      "date": "2026-10-26 21:12",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 22,
+      "nogate_pass": 20,
+      "norepair_pass": 20,
+      "gate_saves": 3,
+      "gate_overreaches": 1
+    },
+    {
+      "date": "2026-10-27 11:39",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 22,
+      "nogate_pass": 20,
+      "norepair_pass": 22,
+      "gate_saves": 3,
+      "gate_overreaches": 1
+    },
+    {
+      "date": "2026-10-27 20:32",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 24,
+      "nogate_pass": 20,
+      "norepair_pass": 20,
+      "gate_saves": 3,
+      "gate_overreaches": 1
+    },
+    {
+      "date": "2026-10-28 11:22",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 24,
+      "nogate_pass": 20,
+      "norepair_pass": 22,
+      "gate_saves": 3,
+      "gate_overreaches": 1
+    },
+    {
+      "date": "2026-10-28 19:48",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 24,
+      "nogate_pass": 20,
+      "norepair_pass": 22,
+      "gate_saves": 3,
+      "gate_overreaches": 1
+    },
+    {
+      "date": "2026-10-29 10:46",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 24,
+      "nogate_pass": 10,
+      "norepair_pass": 18,
+      "gate_saves": 3,
+      "gate_overreaches": 1
+    },
+    {
+      "date": "2026-10-29 18:47",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 24,
+      "nogate_pass": 10,
+      "norepair_pass": 17,
+      "gate_saves": 3,
+      "gate_overreaches": 1
+    },
+    {
+      "date": "2026-10-30 09:30",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 24,
+      "nogate_pass": 10,
+      "norepair_pass": 17,
+      "gate_saves": 3,
+      "gate_overreaches": 1
+    },
+    {
+      "date": "2026-10-30 18:03",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 21,
+      "nogate_pass": 13,
+      "norepair_pass": 18,
+      "gate_saves": 0,
+      "gate_overreaches": 3
+    },
+    {
+      "date": "2026-10-31 10:56",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 22,
+      "nogate_pass": 15,
+      "norepair_pass": 15,
+      "gate_saves": 3,
+      "gate_overreaches": 1
+    },
+    {
+      "date": "2026-10-31 20:24",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 15,
+      "nogate_pass": 16,
+      "norepair_pass": 14,
+      "gate_saves": 2,
+      "gate_overreaches": 9
+    },
+    {
+      "date": "2026-11-01 08:52",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 20,
+      "nogate_pass": 13,
+      "norepair_pass": 22,
+      "gate_saves": 0,
+      "gate_overreaches": 4
+    },
+    {
+      "date": "2026-11-01 19:03",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 23,
+      "nogate_pass": 10,
+      "norepair_pass": 17,
+      "gate_saves": 3,
+      "gate_overreaches": 1
+    },
+    {
+      "date": "2026-11-02 11:11",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 15,
+      "nogate_pass": 15,
+      "norepair_pass": 14,
+      "gate_saves": 2,
+      "gate_overreaches": 9
+    },
+    {
+      "date": "2026-11-02 20:26",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 15,
+      "nogate_pass": 15,
+      "norepair_pass": 14,
+      "gate_saves": 2,
+      "gate_overreaches": 9
+    },
+    {
+      "date": "2026-11-03 20:30",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 18,
+      "nogate_pass": 20,
+      "norepair_pass": 15,
+      "gate_saves": 3,
+      "gate_overreaches": 7
+    },
+    {
+      "date": "2026-11-04 11:46",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 14,
+      "nogate_pass": 19,
+      "norepair_pass": 15,
+      "gate_saves": 2,
+      "gate_overreaches": 11
+    },
+    {
+      "date": "2026-11-04 20:23",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 15,
+      "nogate_pass": 17,
+      "norepair_pass": 14,
+      "gate_saves": 2,
+      "gate_overreaches": 9
+    },
+    {
+      "date": "2026-11-05 11:11",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 15,
+      "nogate_pass": 16,
+      "norepair_pass": 14,
+      "gate_saves": 2,
+      "gate_overreaches": 9
+    },
+    {
+      "date": "2026-11-05 20:24",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 15,
+      "nogate_pass": 16,
+      "norepair_pass": 13,
+      "gate_saves": 2,
+      "gate_overreaches": 9
+    },
+    {
+      "date": "2026-11-06 11:36",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 15,
+      "nogate_pass": 17,
+      "norepair_pass": 14,
+      "gate_saves": 2,
+      "gate_overreaches": 9
+    },
+    {
+      "date": "2026-11-06 20:26",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 15,
+      "nogate_pass": 15,
+      "norepair_pass": 14,
+      "gate_saves": 2,
+      "gate_overreaches": 9
+    },
+    {
+      "date": "2026-11-07 11:16",
+      "total": 33,
+      "corrupt": 0,
+      "infra": 0,
+      "full_pass": 15,
+      "nogate_pass": 15,
+      "norepair_pass": 14,
+      "gate_saves": 2,
+      "gate_overreaches": 9
     }
   ]
 }
